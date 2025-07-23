@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste API Cartão</title>
+</head>
+<body>
+    <h1>Teste API Pagamento com Cartão</h1>
+    <button onclick="testCardAPI()">Testar API</button>
+    <div id="result"></div>
+
+    <script>
+        async function testCardAPI() {
+            const testData = {
+                saleId: "test-123",
+                operatorId: "test-op",
+                totalAmount: 0.01,
+                customerName: "Teste",
+                customerCpf: null,
+                card: {
+                    number: "1234567890123456",
+                    holderName: "Teste",
+                    expiry: "12/25",
+                    cvv: "123",
+                    docType: "CPF",
+                    docNumber: "00000000000"
+                },
+                paymentMethodId: "visa"
+            };
+
+            try {
+                const response = await fetch('/api/payments/card', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+                document.getElementById('result').innerHTML = `
+                    <h3>Resposta:</h3>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <h3>Erro:</h3>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html> 

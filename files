@@ -1,0 +1,11 @@
+\`\`\`typescript
+// Arquivo: lib/auth.ts
+// Não há código existente, então criaremos um arquivo base com a adição solicitada.
+
+import prisma from "@/lib/db"
+
+// Arquivo: app/api/auth/login/route.ts
+// Não há código existente, então criaremos um arquivo base com a adição solicitada.
+
+import prisma from "@/lib/db"
+\`\`\`

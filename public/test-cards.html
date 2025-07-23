@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Cartões de Teste MercadoPago</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .card-number {
+            font-family: monospace;
+            font-size: 18px;
+            color: #007bff;
+        }
+
+        .card-details {
+            margin: 10px 0;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .test-button {
+            background: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .test-button:hover {
+            background: #0056b3;
+        }
+    </style>
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
+</head>
+
+<body>
+    <h1>Cartões de Teste MercadoPago</h1>
+    <p>Use estes cartões para testar o sistema de pagamento:</p>
+
+    <div class="card">
+        <h3>Visa - Aprovado</h3>
+        <div class="card-number">5031 4332 1540 6351</div>
+        <div class="card-details">
+            <strong>CVV:</strong> 123<br>
+            <strong>Validade:</strong>11/30<br>
+            <strong>CPF:</strong> 12345678909
+        </div>
+        <button class="test-button" onclick="testCard('5031433215406351', '123', '11/30', '12345678909')">Testar
+            Cartão</button>
+        <div id="result-visa"></div>
+    </div>
+
+    <div class="card">
+        <h3>Mastercard - Aprovado</h3>
+        <div class="card-number">4235 6477 2802 5682</div>
+        <div class="card-details">
+            <strong>CVV:</strong>123<br>
+            <strong>Validade:</strong>11/30<br>
+            <strong>CPF:</strong> 12345678909
+        </div>
+        <button class="test-button" onclick="testCard('4235647728025682', '123', '11/30', '12345678909')">Testar
+            Cartão</button>
+        <div id="result-mastercard"></div>
+    </div>
+
+    <div class="card">
+        <h3>American Express - Aprovado</h3>
+        <div class="card-number">3753 651535 56885</div>
+        <div class="card-details">
+            <strong>CVV:</strong> 1234<br>
+            <strong>Validade:</strong> 11/30<br>
+            <strong>CPF:</strong> 12345678909
+        </div>
+        <button class="test-button" onclick="testCard('375365153556885', '1234', '11/30', '12345678909')">Testar
+            Cartão</button>
+        <div id="result-amex"></div>
+    </div>
+
+    <div class="card">
+        <h3>Cartão Recusado</h3>
+        <div class="card-number">5067 7667 8388 8311</div>
+        <div class="card-details">
+            <strong>CVV:</strong> 123<br>
+            <strong>Validade:</strong> 11/25<br>
+            <strong>CPF:</strong> 12345678909
+        </div>
+        <button class="test-button" onclick="testCard('5067766783888311', '123', '11/30', '12345678909')">Testar
+            Cartão</button>
+        <div id="result-rejected"></div>
+    </div>
+
+    <script>
+        let mp = null;
+
+        // Inicializar MercadoPago
+        function initMercadoPago() {
+            if (typeof window.MercadoPago !== 'undefined') {
+                mp = new window.MercadoPago('TEST-975dea35-8635-4147-ab52-e99b0a34b4ff');
+                console.log('✅ MercadoPago inicializado');
+                return true;
+            } else {
+                console.error('❌ SDK do MercadoPago não carregado');
+                return false;
+            }
+        }
+
+        function getPaymentMethod(cardNumber) {
+            if (cardNumber.startsWith('5031')) return 'master';
+            if (cardNumber.startsWith('4235')) return 'visa';
+            if (cardNumber.startsWith('3753')) return 'amex';
+            if (cardNumber.startsWith('5067')) return 'elo';
+            return 'visa'; // fallback
+        }
+
+
+        // Testar cartão
+        async function testCard(cardNumber, cvv, expiry, cpf) {
+            if (!initMercadoPago()) {
+                alert('MercadoPago não inicializado');
+                return;
+            }
+
+            const [month, year] = expiry.split('/');
+            const fullYear = year.length === 2 ? `20${year}` : year;
+            console.log('🔍 Testando cartão:', { cardNumber, cvv, month, fullYear, cpf });
+            if (!month || !year) {
+                alert('Data de validade do cartão inválida');
+                return;
+            }
+            const resultDiv = document.getElementById(`result-${cardNumber.includes('4000') ? 'rejected' : cardNumber.startsWith('4509') ? 'visa' : cardNumber.startsWith('5031') ? 'mastercard' : 'amex'}`);
+
+            try {
+                resultDiv.innerHTML = '<p>🔄 Testando cartão...</p>';
+
+                let obj =  {
+                    cardNumber: cardNumber,
+                    cardholderName: 'Teste Cliente',
+                    expiration_month: '11', // Ensure it's an integer
+                    expiration_year: '2030', // Ensure it's an integer
+                    securityCode: cvv,
+                    identification: {
+                        type: 'CPF',
+                        number: cpf,
+                    },
+                }
+
+                console.log('🔍 Criando token com os dados:', obj);
+
+                const cardToken = await mp.createCardToken(obj);
+
+                resultDiv.innerHTML = `<p class="success">✅ Token criado: ${cardToken.id}</p>`;
+                console.log('✅ Token criado:', cardToken.id);
+
+                // Testar pagamento
+                const paymentData = {
+                    saleId: `test-${Date.now()}`,
+                    operatorId: 'test-op',
+                    totalAmount: 1.00, // Valor mínimo para teste
+                    customerName: 'Teste Cliente',
+                    customerCpf: cpf,
+                    token: cardToken.id,
+                    paymentMethodId: getPaymentMethod(cardNumber),
+                    installments: 1,
+                };
+
+                const response = await fetch('/api/payments/card', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(paymentData),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML += `<p class="success">✅ Pagamento processado: ${result.card?.status}</p>`;
+                } else {
+                    resultDiv.innerHTML += `<p class="error">❌ Erro no pagamento: ${result.error}</p>`;
+                }
+
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ Erro: ${error.message}</p>`;
+                console.error('❌ Erro ao testar cartão:', error);
+            }
+        }
+
+        // Inicializar quando a página carregar
+        window.addEventListener('load', () => {
+            if (initMercadoPago()) {
+                console.log('✅ Página carregada e MercadoPago inicializado');
+            }
+        });
+    </script>
+</body>
+
+</html>

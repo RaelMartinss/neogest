@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste CardForm MercadoPago</title>
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #form-checkout {
+            display: flex;
+            flex-direction: column;
+            max-width: 600px;
+            gap: 15px;
+        }
+        .container {
+            height: 40px;
+            display: inline-block;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 8px;
+        }
+        input, select {
+            height: 40px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>Teste CardForm MercadoPago</h1>
+    <p>Use o formulário oficial do MercadoPago para testar pagamentos:</p>
+
+    <form id="form-checkout">
+        <div id="form-checkout__cardNumber" class="container"></div>
+        <div id="form-checkout__expirationDate" class="container"></div>
+        <div id="form-checkout__securityCode" class="container"></div>
+        <input type="text" id="form-checkout__cardholderName" placeholder="Nome do titular" />
+        <select id="form-checkout__issuer"></select>
+        <select id="form-checkout__installments"></select>
+        <select id="form-checkout__identificationType"></select>
+        <input type="text" id="form-checkout__identificationNumber" placeholder="Número do documento" value="12345678909" />
+        <input type="email" id="form-checkout__cardholderEmail" placeholder="E-mail" value="teste@exemplo.com" />
+
+        <button type="submit" id="form-checkout__submit">Pagar R$ 1.00</button>
+        <progress value="0" class="progress-bar">Carregando...</progress>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        const mp = new MercadoPago('TEST-975dea35-8635-4147-ab52-e99b0a34b4ff');
+
+        const cardForm = mp.cardForm({
+            amount: "1.00",
+            iframe: true,
+            form: {
+                id: "form-checkout",
+                cardNumber: {
+                    id: "form-checkout__cardNumber",
+                    placeholder: "Número do cartão",
+                },
+                expirationDate: {
+                    id: "form-checkout__expirationDate",
+                    placeholder: "MM/YY",
+                },
+                securityCode: {
+                    id: "form-checkout__securityCode",
+                    placeholder: "Código de segurança",
+                },
+                cardholderName: {
+                    id: "form-checkout__cardholderName",
+                    placeholder: "Titular do cartão",
+                },
+                issuer: {
+                    id: "form-checkout__issuer",
+                    placeholder: "Banco emissor",
+                },
+                installments: {
+                    id: "form-checkout__installments",
+                    placeholder: "Parcelas",
+                },        
+                identificationType: {
+                    id: "form-checkout__identificationType",
+                    placeholder: "Tipo de documento",
+                },
+                identificationNumber: {
+                    id: "form-checkout__identificationNumber",
+                    placeholder: "Número do documento",
+                },
+                cardholderEmail: {
+                    id: "form-checkout__cardholderEmail",
+                    placeholder: "E-mail",
+                },
+            },
+            callbacks: {
+                onFormMounted: error => {
+                    if (error) {
+                        console.warn("Form Mounted handling error: ", error);
+                        showResult('❌ Erro ao montar formulário: ' + error.message, 'error');
+                    } else {
+                        console.log("✅ Form mounted");
+                        showResult('✅ Formulário carregado com sucesso', 'info');
+                    }
+                },
+                onSubmit: event => {
+                    event.preventDefault();
+                    showResult('🔄 Processando pagamento...', 'info');
+
+                    const {
+                        paymentMethodId: payment_method_id,
+                        issuerId: issuer_id,
+                        cardholderEmail: email,
+                        amount,
+                        token,
+                        installments,
+                        identificationNumber,
+                        identificationType,
+                    } = cardForm.getCardFormData();
+
+                    console.log('📦 Dados do formulário:', {
+                        payment_method_id,
+                        issuer_id,
+                        email,
+                        amount,
+                        token: token ? '***' : null,
+                        installments,
+                        identificationNumber,
+                        identificationType,
+                    });
+
+                    // Enviar para nossa API
+                    fetch("/api/payments/card", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            saleId: `test-${Date.now()}`,
+                            operatorId: 'test-op',
+                            totalAmount: parseFloat(amount),
+                            customerName: document.getElementById('form-checkout__cardholderName').value,
+                            customerCpf: identificationNumber,
+                            token,
+                            paymentMethodId: payment_method_id,
+                            installments: parseInt(installments),
+                            email,
+                            issuer_id,
+                            identificationType,
+                        }),
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.card?.status === 'approved') {
+                            showResult('✅ Pagamento aprovado! Transaction ID: ' + result.card.transactionId, 'success');
+                        } else {
+                            showResult('❌ Erro no pagamento: ' + (result.error || 'Erro desconhecido'), 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showResult('❌ Erro ao processar: ' + error.message, 'error');
+                    });
+                },
+                onFetching: (resource) => {
+                    console.log("Fetching resource: ", resource);
+                    const progressBar = document.querySelector(".progress-bar");
+                    progressBar.removeAttribute("value");
+                    return () => {
+                        progressBar.setAttribute("value", "0");
+                    };
+                }
+            },
+        });
+
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Carregamento MercadoPago</title>
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
+</head>
+<body>
+    <h1>Teste Carregamento SDK MercadoPago</h1>
+    <div id="result"></div>
+
+    <script>
+        function checkMercadoPago() {
+            const resultDiv = document.getElementById('result');
+            
+            // Verificar se o SDK foi carregado
+            if (typeof window.MercadoPago !== 'undefined') {
+                resultDiv.innerHTML = '<p style="color: green;">✅ SDK do MercadoPago carregado com sucesso!</p>';
+                
+                // Testar inicialização
+                try {
+                    const mp = new window.MercadoPago('TEST-975dea35-8635-4147-ab52-e99b0a34b4ff');
+                    resultDiv.innerHTML += '<p style="color: green;">✅ MercadoPago inicializado com sucesso!</p>';
+                    
+                    // Testar criação de token
+                    const testData = {
+                        cardNumber: '5031 4332 1540 6351',
+                        cardholderName: 'Teste',
+                        expirationMonth: '11',
+                        expirationYear: '2030',
+                        securityCode: '123',
+                        identification: {
+                            type: 'CPF',
+                            number: '00000000000'
+                        }
+                    };
+                    
+                    mp.createCardToken(testData)
+                        .then(token => {
+                            resultDiv.innerHTML += `<p style="color: green;">✅ Token criado: ${token.id}</p>`;
+                        })
+                        .catch(error => {
+                            resultDiv.innerHTML += `<p style="color: red;">❌ Erro ao criar token: ${error.message}</p>`;
+                        });
+                        
+                } catch (error) {
+                    resultDiv.innerHTML += `<p style="color: red;">❌ Erro ao inicializar: ${error.message}</p>`;
+                }
+            } else {
+                resultDiv.innerHTML = '<p style="color: red;">❌ SDK do MercadoPago não foi carregado!</p>';
+            }
+        }
+        
+        // Executar teste após carregamento da página
+        window.addEventListener('load', checkMercadoPago);
+    </script>
+</body>
+</html> 
