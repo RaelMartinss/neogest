@@ -10,35 +10,35 @@ export async function getDashboardStats() {
     const todaySales = await sql`
      SELECT 
         COUNT(*) as count, 
-        COALESCE(SUM(total), 0) as total 
+        COALESCE(SUM("totalAmount"), 0) as total 
       FROM 
         sales
       WHERE 
-        "created_at" >= date_trunc('day', NOW()) 
-        AND "created_at" < date_trunc('day', NOW()) + interval '1 day'
+        "createdAt" >= date_trunc('day', NOW()) 
+        AND "createdAt" < date_trunc('day', NOW()) + interval '1 day'
     `
 
     // Vendas de ontem para comparação
     const yesterdaySales = await sql`
-      SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as total
+      SELECT COUNT(*) as count, COALESCE(SUM("totalAmount"), 0) as total
       FROM sales
-      WHERE DATE("created_at") = CURRENT_DATE - INTERVAL '1 day'
+      WHERE DATE("createdAt") = CURRENT_DATE - INTERVAL '1 day'
     `
 
     // Vendas do mês atual
     const monthSales = await sql`
-      SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as total
+      SELECT COUNT(*) as count, COALESCE(SUM("totalAmount"), 0) as total
       FROM sales
-      WHERE EXTRACT(MONTH FROM "created_at") = EXTRACT(MONTH FROM CURRENT_DATE)
-        AND EXTRACT(YEAR FROM "created_at") = EXTRACT(YEAR FROM CURRENT_DATE)
+      WHERE EXTRACT(MONTH FROM "createdAt") = EXTRACT(MONTH FROM CURRENT_DATE)
+        AND EXTRACT(YEAR FROM "createdAt") = EXTRACT(YEAR FROM CURRENT_DATE)
     `
 
     // Vendas do mês passado para comparação
     const lastMonthSales = await sql`
-      SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as total
+      SELECT COUNT(*) as count, COALESCE(SUM("totalAmount"), 0) as total
       FROM sales
-      WHERE EXTRACT(MONTH FROM "created_at") = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
-        AND EXTRACT(YEAR FROM "created_at") = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month')
+      WHERE EXTRACT(MONTH FROM "createdAt") = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+        AND EXTRACT(YEAR FROM "createdAt") = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month')
     `
 
     // Produtos em estoque
@@ -66,27 +66,27 @@ export async function getDashboardStats() {
     const recentSales = await sql`
       SELECT 
         s.id,
-        s.id as "saleNumber",
-        s.total as "totalAmount",
-        s."created_at" as "createdAt",
-        s."payment_method" as "tipoPagamento",
-        s."customer_name" as "customerName",
+        s."saleNumber",
+        s."totalAmount",
+        s."createdAt",
+        s."tipoPagamento",
+        s."customerName",
         s.status
       FROM sales s
-      ORDER BY s."created_at" DESC
+      ORDER BY s."createdAt" DESC
       LIMIT 5
     `
 
     // Vendas por dia (últimos 7 dias)
     const salesByDay = await sql`
       SELECT 
-        DATE("created_at") as date,
+        DATE("createdAt") as date,
         COUNT(*) as count,
-        COALESCE(SUM(total), 0) as total
+        COALESCE(SUM("totalAmount"), 0) as total
       FROM sales
-      WHERE "created_at" >= CURRENT_DATE - INTERVAL '7 days'
-      GROUP BY DATE("created_at")
-      ORDER BY DATE("created_at")
+      WHERE "createdAt" >= CURRENT_DATE - INTERVAL '7 days'
+      GROUP BY DATE("createdAt")
+      ORDER BY DATE("createdAt")
     `
 
     // Produtos mais vendidos
@@ -94,10 +94,10 @@ export async function getDashboardStats() {
       SELECT 
         si."product_name",
         SUM(si.quantity) as total_quantity,
-        COUNT(DISTINCT si."sale_id") as sales_count
+        COUNT(DISTINCT si."saleId") as sales_count
       FROM sale_items si
-      JOIN sales s ON s.id = si."sale_id"
-      WHERE s."created_at" >= CURRENT_DATE - INTERVAL '30 days'
+      JOIN sales s ON s.id = si."saleId"
+      WHERE s."createdAt" >= CURRENT_DATE - INTERVAL '30 days'
       GROUP BY si."product_name"
       ORDER BY total_quantity DESC
       LIMIT 5
@@ -106,12 +106,12 @@ export async function getDashboardStats() {
     // Métodos de pagamento mais usados
     const paymentMethods = await sql`
       SELECT 
-        "payment_method" as "tipoPagamento",
+        "tipoPagamento",
         COUNT(*) as count,
-        COALESCE(SUM(total), 0) as total
+        COALESCE(SUM("totalAmount"), 0) as total
       FROM sales
-      WHERE "created_at" >= CURRENT_DATE - INTERVAL '30 days'
-      GROUP BY "payment_method"
+      WHERE "createdAt" >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY "tipoPagamento"
       ORDER BY count DESC
     `
 
@@ -159,7 +159,7 @@ export async function getDashboardStats() {
         salesCount: Number(product.sales_count),
       })),
       paymentMethods: paymentMethods.map((method: any) => ({
-        method: method.paymentMethod,
+        method: method.tipoPagamento,
         count: Number(method.count),
         total: Number(method.total),
       })),
@@ -225,7 +225,7 @@ export async function getSystemAlerts() {
     const todaySalesCount = await sql`
       SELECT COUNT(*) as count
       FROM sales
-      WHERE DATE("created_at") = CURRENT_DATE
+      WHERE DATE("createdAt") = CURRENT_DATE
     `
 
     if (Number(todaySalesCount[0]?.count || 0) === 0) {
