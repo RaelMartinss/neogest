@@ -11,12 +11,18 @@ export async function GET(request: Request) {
     const categoryId = searchParams.get("categoryId") || "";
     const supplierId = searchParams.get("supplierId") || "";
     const status = searchParams.get("status") || "";
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
+    const offset = (page - 1) * limit;
 
     console.log("Filtros recebidos:", {
       search,
       categoryId,
       supplierId,
       status,
+      page,
+      limit,
+      offset,
     });
 
     // Buscar produtos com filtros usando múltiplas queries condicionais
@@ -49,6 +55,7 @@ export async function GET(request: Request) {
         LEFT JOIN categories c ON p.category_id = c.id
         LEFT JOIN suppliers s ON p.supplier_id = s.id
         ORDER BY p.codigo, p.name
+        LIMIT ${limit} OFFSET ${offset}
       `;
     } else {
       // Query com filtros - vamos construir condicionalmente
@@ -84,6 +91,7 @@ export async function GET(request: Request) {
             LOWER(p.description) LIKE LOWER(${`%${search}%`})
           )
           ORDER BY p.codigo, p.name
+          LIMIT ${limit} OFFSET ${offset}
         `;
       } else if (
         categoryId &&
@@ -118,6 +126,7 @@ export async function GET(request: Request) {
           LEFT JOIN suppliers s ON p.supplier_id = s.id
           WHERE p.category_id = ${Number.parseInt(categoryId)}
           ORDER BY p.codigo, p.name
+          LIMIT ${limit} OFFSET ${offset}
         `;
       } else if (
         status &&
@@ -154,6 +163,7 @@ export async function GET(request: Request) {
             LEFT JOIN suppliers s ON p.supplier_id = s.id
             WHERE p.is_active = true
             ORDER BY p.codigo, p.name
+            LIMIT ${limit} OFFSET ${offset}
           `;
         } else if (status === "inactive") {
           products = await sql`
@@ -182,6 +192,7 @@ export async function GET(request: Request) {
             LEFT JOIN suppliers s ON p.supplier_id = s.id
             WHERE p."is_active" = false
             ORDER BY p.codigo, p.name
+            LIMIT ${limit} OFFSET ${offset}
           `;
         } else if (status === "low_stock") {
           products = await sql`
@@ -210,6 +221,7 @@ export async function GET(request: Request) {
             LEFT JOIN suppliers s ON p.supplier_id = s.id
             WHERE p.stock_quantity <= p.min_stock AND p.stock_quantity > 0
             ORDER BY p.codigo, p.name
+            LIMIT ${limit} OFFSET ${offset}
           `;
         } else if (status === "out_of_stock") {
           products = await sql`
@@ -238,6 +250,7 @@ export async function GET(request: Request) {
             LEFT JOIN suppliers s ON p.supplier_id = s.id
             WHERE p.stock_quantity = 0
             ORDER BY p.codigo, p.name
+            LIMIT ${limit} OFFSET ${offset}
           `;
         }
       } else {
@@ -348,6 +361,54 @@ export async function GET(request: Request) {
         SELECT code, name FROM units ORDER BY name
       `;
 
+    // Contar total de produtos para paginação
+    let totalCount = 0;
+    if (!search && !categoryId && !supplierId && !status) {
+      const countResult = await sql`SELECT COUNT(*) as total FROM products`;
+      totalCount = Number(countResult[0].total);
+    } else if (search && !categoryId && !supplierId && !status) {
+      const countResult = await sql`
+        SELECT COUNT(*) as total FROM products p
+        WHERE (
+          LOWER(p.name) LIKE LOWER(${`%${search}%`}) OR 
+          p.codigo LIKE ${`%${search}%`} OR 
+          p.barcode LIKE ${`%${search}%`} OR
+          LOWER(p.description) LIKE LOWER(${`%${search}%`})
+        )
+      `;
+      totalCount = Number(countResult[0].total);
+    } else if (categoryId && categoryId !== "all" && !search && !supplierId && !status) {
+      const countResult = await sql`
+        SELECT COUNT(*) as total FROM products WHERE category_id = ${Number.parseInt(categoryId)}
+      `;
+      totalCount = Number(countResult[0].total);
+    } else if (status && status !== "all" && !search && !categoryId && !supplierId) {
+      if (status === "active") {
+        const countResult = await sql`SELECT COUNT(*) as total FROM products WHERE is_active = true`;
+        totalCount = Number(countResult[0].total);
+      } else if (status === "inactive") {
+        const countResult = await sql`SELECT COUNT(*) as total FROM products WHERE "is_active" = false`;
+        totalCount = Number(countResult[0].total);
+      } else if (status === "low_stock") {
+        const countResult = await sql`
+          SELECT COUNT(*) as total FROM products 
+          WHERE stock_quantity <= min_stock AND stock_quantity > 0
+        `;
+        totalCount = Number(countResult[0].total);
+      } else if (status === "out_of_stock") {
+        const countResult = await sql`SELECT COUNT(*) as total FROM products WHERE stock_quantity = 0`;
+        totalCount = Number(countResult[0].total);
+      }
+    } else {
+      // Para filtros combinados, usar contagem aproximada
+      totalCount = products.length;
+    }
+
+    // Calcular informações de paginação
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
     // Garantir que products é um array e normalizar dados
     const productsArray = Array.isArray(products) ? products : [];
     const normalizedProducts = productsArray.map((p: any) => ({
@@ -380,7 +441,14 @@ export async function GET(request: Request) {
         name: s.name,
       })),
       units: units.map((u: any) => ({ code: u.code, name: u.name })),
-      total: normalizedProducts.length,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages,
+        hasNextPage,
+        hasPrevPage,
+      },
     });
   } catch (error) {
     console.error("Erro ao buscar produtos:", error);
