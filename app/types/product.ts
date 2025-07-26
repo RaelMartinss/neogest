@@ -1,20 +1,26 @@
 export interface Product {
   id: string
-  codigo?: string // ← ADICIONAR ESTA LINHA
+  codigo: string
   name: string
-  description?: string
   barcode?: string
-  category: string
-  supplier: string
-  costPrice: number
-  salePrice: number
+  description?: string
+  categoryId?: string | null
+  categoryName?: string
+  category?: string
+  supplierId?: string | null
+  supplierName?: string
+  supplier?: string
   stockQuantity: number
   minStock: number
   maxStock: number
-  unit: string
+  costPrice: number
+  salePrice: number
+  unit: string // Unidade de medida (UN, KG, L, M, etc.)
+  unitName?: string // Nome completo da unidade
   isActive: boolean
-  createdAt: string
-  updatedAt: string
+  status: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface Category {
@@ -28,21 +34,22 @@ export interface Supplier {
   name: string
   email?: string
   phone?: string
-  cnpj?: string
+  address?: string
+}
+
+export interface Unit {
+  code: string // Código da unidade (UN, KG, L, etc.)
+  name: string // Nome da unidade (Unidade, Quilograma, Litro, etc.)
+  description?: string
 }
 
 export interface StockMovement {
   id: string
   productId: string
-  userId: string
-  movementType: "IN" | "OUT" | "ADJUSTMENT"
+  type: "IN" | "OUT" | "ADJUSTMENT"
   quantity: number
-  previousStock: number
-  newStock: number
-  unitCost?: number
-  totalCost?: number
-  reason?: string
-  referenceDocument?: string
+  reason: string
+  userId?: string
   createdAt: string
 }
 
@@ -55,8 +62,25 @@ export interface StockStats {
 }
 
 export interface ProductFilters {
-  search?: string
-  category?: string
-  supplier?: string
-  status?: "all" | "active" | "inactive" | "low_stock" | "out_of_stock"
+  search: string
+  category: string
+  supplier: string
+  status: string
 }
+
+// Unidades de medida mais comuns
+export const COMMON_UNITS = [
+  { code: "UN", name: "Unidade", description: "Peça, item individual" },
+  { code: "KG", name: "Quilograma", description: "Peso em quilogramas" },
+  { code: "G", name: "Grama", description: "Peso em gramas" },
+  { code: "L", name: "Litro", description: "Volume em litros" },
+  { code: "ML", name: "Mililitro", description: "Volume em mililitros" },
+  { code: "M", name: "Metro", description: "Comprimento em metros" },
+  { code: "CM", name: "Centímetro", description: "Comprimento em centímetros" },
+  { code: "M2", name: "Metro Quadrado", description: "Área em metros quadrados" },
+  { code: "M3", name: "Metro Cúbico", description: "Volume em metros cúbicos" },
+  { code: "CX", name: "Caixa", description: "Embalagem tipo caixa" },
+  { code: "PCT", name: "Pacote", description: "Embalagem tipo pacote" },
+  { code: "DZ", name: "Dúzia", description: "Conjunto de 12 unidades" },
+  { code: "PR", name: "Par", description: "Conjunto de 2 unidades" },
+]

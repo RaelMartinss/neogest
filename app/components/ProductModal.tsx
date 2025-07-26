@@ -1,26 +1,32 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { X, Camera, QrCode } from "lucide-react"
-import type { Product, Category, Supplier } from "../types/product"
-import BarcodeScanner from "./BarcodeScanner"
-import BarcodeGenerator from "./BarcodeGenerator"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { X, Camera, QrCode } from "lucide-react";
+import type { Product, Category, Supplier } from "../types/product";
+import BarcodeScanner from "./BarcodeScanner";
+import BarcodeGenerator from "./BarcodeGenerator";
 
 interface ProductModalProps {
-  product?: Product | null
-  categories: Category[]
-  suppliers: Supplier[]
-  onClose: () => void
-  onSave: () => void
+  product?: Product | null;
+  categories: Category[];
+  suppliers: Supplier[];
+  onClose: () => void;
+  onSave: () => void;
 }
 
-export default function ProductModal({ product, categories, suppliers, onClose, onSave }: ProductModalProps) {
+export default function ProductModal({
+  product,
+  categories,
+  suppliers,
+  onClose,
+  onSave,
+}: ProductModalProps) {
   const [formData, setFormData] = useState({
     codigo: "",
     name: "",
@@ -35,10 +41,10 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
     maxStock: "",
     unit: "UN",
     isActive: true,
-  })
-  const [isLoading, setIsLoading] = useState(false)
-  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
-  const [showBarcodeGenerator, setShowBarcodeGenerator] = useState(false)
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [showBarcodeGenerator, setShowBarcodeGenerator] = useState(false);
 
   useEffect(() => {
     if (product) {
@@ -56,18 +62,18 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
         maxStock: product.maxStock.toString(),
         unit: product.unit,
         isActive: product.isActive,
-      })
+      });
     }
-  }, [product])
+  }, [product]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
-      console.log("Enviando dados do produto:", product?.id)
-      const url = product ? `/api/products/${product.id}` : "/api/products"
-      const method = product ? "PUT" : "POST"
+      console.log("Enviando dados do produto:", product?.id);
+      const url = product ? `/api/products/${product.id}` : "/api/products";
+      const method = product ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -82,43 +88,46 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
           minStock: Number.parseInt(formData.minStock) || 0,
           maxStock: Number.parseInt(formData.maxStock) || 100,
         }),
-      })
+      });
 
       if (response.ok) {
-        onSave()
+        onSave();
       } else {
-        const error = await response.json()
-        alert(error.error || "Erro ao salvar produto")
+        const error = await response.json();
+        alert(error.error || "Erro ao salvar produto");
       }
     } catch (error) {
-      console.error("Erro ao salvar produto:", error)
-      alert("Erro ao salvar produto")
+      console.error("Erro ao salvar produto:", error);
+      alert("Erro ao salvar produto");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
-    }))
-  }
+      [name]:
+        type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+    }));
+  };
 
   const handleBarcodeScan = (barcode: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      barcode: barcode
-    }))
-  }
+      barcode: barcode,
+    }));
+  };
 
   const handleBarcodeGenerate = (barcode: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      barcode: barcode
-    }))
-  }
+      barcode: barcode,
+    }));
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -134,6 +143,7 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
               <div>
                 <Label htmlFor="codigo">Código Interno</Label>
                 <Input
@@ -357,5 +367,5 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
         onGenerate={handleBarcodeGenerate}
       />
     </div>
-  )
+  );
 }
