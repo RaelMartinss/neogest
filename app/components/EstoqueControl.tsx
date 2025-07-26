@@ -301,7 +301,7 @@ export default function EstoqueControl() {
                   </div>
                 </div>
 
-                <div>
+                {/* <div>
                   <label className="text-sm font-medium mb-2 block">Categoria</label>
                   <select
                     value={filters.category}
@@ -315,9 +315,9 @@ export default function EstoqueControl() {
                       </option>
                     ))}
                   </select>
-                </div>
+                </div> */}
 
-                <div>
+                {/* <div>
                   <label className="text-sm font-medium mb-2 block">Fornecedor</label>
                   <select
                     value={filters.supplier}
@@ -331,7 +331,7 @@ export default function EstoqueControl() {
                       </option>
                     ))}
                   </select>
-                </div>
+                </div> */}
 
                 <div>
                   <label className="text-sm font-medium mb-2 block">Status</label>
