@@ -274,7 +274,7 @@ export default function EstoqueControl() {
               </div>
             </div>
 
-            <div>
+            {/* <div>
               <label className="text-sm font-medium mb-2 block">
                 Categoria
               </label>
@@ -292,9 +292,9 @@ export default function EstoqueControl() {
                   </option>
                 ))}
               </select>
-            </div>
+            </div> */}
 
-            <div>
+            {/* <div>
               <label className="text-sm font-medium mb-2 block">
                 Fornecedor
               </label>
@@ -312,7 +312,7 @@ export default function EstoqueControl() {
                   </option>
                 ))}
               </select>
-            </div>
+            </div> */}
 
             <div>
               <label className="text-sm font-medium mb-2 block">Status</label>
