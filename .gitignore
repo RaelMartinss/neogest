@@ -16,6 +16,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# Scripts
+/scripts
+./scripts
+
 # env files
 .env*
 
