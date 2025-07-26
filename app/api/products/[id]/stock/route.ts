@@ -1,18 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { mockProducts, mockStockMovements } from "@/app/data/mockData"
-import type { StockMovement } from "@/app/types/product"
+import { neon } from "@neondatabase/serverless"
+
+const sql = neon(process.env.DATABASE_URL!)
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { movementType, quantity, reason, referenceDocument, unitCost } = await request.json()
+    const productId = params.id
 
-    const productIndex = mockProducts.findIndex((p) => p.id === params.id)
-    if (productIndex === -1) {
+    // Buscar produto no banco
+    const products = await sql`SELECT * FROM products WHERE id = ${productId}`
+    if (!products || products.length === 0) {
       return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
     }
-
-    const product = mockProducts[productIndex]
-    const previousStock = product.stockQuantity
+    const product = products[0]
+    const previousStock = Number(product.stockQuantity)
     let newStock = previousStock
 
     // Calcular novo estoque baseado no tipo de movimentação
@@ -30,10 +32,14 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         return NextResponse.json({ error: "Tipo de movimentação inválido" }, { status: 400 })
     }
 
-    // Criar movimentação
-    const movement: StockMovement = {
-      id: (mockStockMovements.length + 1).toString(),
-      productId: params.id,
+    // Atualizar estoque no banco
+    await sql`UPDATE products SET "stockQuantity" = ${newStock}, "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${productId}`
+
+    // Registrar movimentação (opcional: criar tabela de movimentações reais)
+    // Aqui apenas retornamos os dados da movimentação
+    const movement = {
+      id: undefined, // Se tiver tabela real, gerar id
+      productId,
       userId: "1", // Em produção, pegar do token JWT
       movementType,
       quantity: movementType === "ADJUSTMENT" ? quantity - previousStock : quantity,
@@ -46,19 +52,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       createdAt: new Date().toISOString(),
     }
 
-    mockStockMovements.push(movement)
-
-    // Atualizar estoque do produto
-    mockProducts[productIndex] = {
-      ...product,
-      stockQuantity: newStock,
-      updatedAt: new Date().toISOString(),
-    }
-
     return NextResponse.json({
       message: "Movimentação de estoque realizada com sucesso",
       movement,
-      product: mockProducts[productIndex],
+      product: { ...product, stockQuantity: newStock, updatedAt: new Date().toISOString() },
     })
   } catch (error) {
     console.error("Erro na movimentação de estoque:", error)
@@ -68,11 +65,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const movements = mockStockMovements
-      .filter((m) => m.productId === params.id)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-
-    return NextResponse.json({ movements })
+    // Aqui deveria buscar as movimentações reais do banco, se existir tabela
+    // Por enquanto, retorna vazio
+    return NextResponse.json({ movements: [] })
   } catch (error) {
     console.error("Erro ao buscar movimentações:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })

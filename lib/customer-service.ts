@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless"
+import { nanoid } from "nanoid"
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -12,10 +13,9 @@ export interface Customer {
   city?: string
   state?: string
   zipcode?: string
-  birth_date?: string
   notes?: string
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
   is_active: boolean
 }
 
@@ -31,16 +31,111 @@ export interface CustomerWithStats extends Customer {
   stats: CustomerStats
 }
 
+// Função para validar CPF
+export function validateCPF(cpf: string): boolean {
+  // Remove caracteres não numéricos
+  const cleanCPF = cpf.replace(/\D/g, '')
+  
+  // Verifica se tem 11 dígitos
+  if (cleanCPF.length !== 11) return false
+  
+  // Verifica se todos os dígitos são iguais
+  if (/^(\d)\1{10}$/.test(cleanCPF)) return false
+  
+  // Validação do primeiro dígito verificador
+  let sum = 0
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(cleanCPF.charAt(i)) * (10 - i)
+  }
+  let remainder = (sum * 10) % 11
+  if (remainder === 10 || remainder === 11) remainder = 0
+  if (remainder !== parseInt(cleanCPF.charAt(9))) return false
+  
+  // Validação do segundo dígito verificador
+  sum = 0
+  for (let i = 0; i < 10; i++) {
+    sum += parseInt(cleanCPF.charAt(i)) * (11 - i)
+  }
+  remainder = (sum * 10) % 11
+  if (remainder === 10 || remainder === 11) remainder = 0
+  if (remainder !== parseInt(cleanCPF.charAt(10))) return false
+  
+  return true
+}
+
+// Função para validar CNPJ
+export function validateCNPJ(cnpj: string): boolean {
+  // Remove caracteres não numéricos
+  const cleanCNPJ = cnpj.replace(/\D/g, '')
+  
+  // Verifica se tem 14 dígitos
+  if (cleanCNPJ.length !== 14) return false
+  
+  // Verifica se todos os dígitos são iguais
+  if (/^(\d)\1{13}$/.test(cleanCNPJ)) return false
+  
+  // Validação do primeiro dígito verificador
+  const weights1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+  let sum = 0
+  for (let i = 0; i < 12; i++) {
+    sum += parseInt(cleanCNPJ.charAt(i)) * weights1[i]
+  }
+  let remainder = sum % 11
+  let digit1 = remainder < 2 ? 0 : 11 - remainder
+  if (digit1 !== parseInt(cleanCNPJ.charAt(12))) return false
+  
+  // Validação do segundo dígito verificador
+  const weights2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+  sum = 0
+  for (let i = 0; i < 13; i++) {
+    sum += parseInt(cleanCNPJ.charAt(i)) * weights2[i]
+  }
+  remainder = sum % 11
+  let digit2 = remainder < 2 ? 0 : 11 - remainder
+  if (digit2 !== parseInt(cleanCNPJ.charAt(13))) return false
+  
+  return true
+}
+
+// Função para validar CPF ou CNPJ
+export function validateCPFCNPJ(value: string): boolean {
+  const cleanValue = value.replace(/\D/g, '')
+  
+  if (cleanValue.length === 11) {
+    return validateCPF(value)
+  } else if (cleanValue.length === 14) {
+    return validateCNPJ(value)
+  }
+  
+  return false
+}
+
+// Função para formatar CPF/CNPJ
+export function formatCPFCNPJ(value: string): string {
+  const cleanValue = value.replace(/\D/g, '')
+  
+  if (cleanValue.length === 11) {
+    return cleanValue.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+  } else if (cleanValue.length === 14) {
+    return cleanValue.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+  }
+  
+  return value
+}
+
 export async function getAllCustomers(): Promise<Customer[]> {
   try {
+    console.log("🔄 getAllCustomers - Executando query...")
     const customers = await sql`
       SELECT * FROM customers 
       WHERE is_active = true 
       ORDER BY name ASC
     `
+    console.log(`✅ getAllCustomers - Encontrados ${customers.length} clientes`)
+    console.log("📋 Primeiros clientes:", customers.slice(0, 3).map(c => ({ id: c.id, name: c.name, is_active: c.is_active })))
     return customers as Customer[]
   } catch (error) {
-    console.error("Erro ao buscar clientes:", error)
+    console.error("❌ Erro ao buscar clientes:", error)
     return []
   }
 }
@@ -151,6 +246,8 @@ export async function getCustomerPurchases(customerId: string) {
 
 export async function searchCustomers(query: string): Promise<Customer[]> {
   try {
+    console.log(`🔍 Buscando clientes com query: "${query}"`)
+    
     const customers = await sql`
       SELECT * FROM customers 
       WHERE is_active = true 
@@ -163,6 +260,8 @@ export async function searchCustomers(query: string): Promise<Customer[]> {
       ORDER BY name ASC
       LIMIT 50
     `
+    
+    console.log(`✅ Encontrados ${customers.length} clientes`)
     return customers as Customer[]
   } catch (error) {
     console.error("Erro ao buscar clientes:", error)
@@ -172,10 +271,51 @@ export async function searchCustomers(query: string): Promise<Customer[]> {
 
 export async function createCustomer(customerData: Partial<Customer>): Promise<Customer | null> {
   try {
+    console.log("📝 Criando cliente:", customerData)
+    
+    // Validar dados obrigatórios
+    if (!customerData.name || customerData.name.trim() === '') {
+      throw new Error("Nome é obrigatório")
+    }
+    
+    // Validar CPF/CNPJ se fornecido
+    if (customerData.cpf_cnpj && customerData.cpf_cnpj.trim() !== '') {
+      if (!validateCPFCNPJ(customerData.cpf_cnpj)) {
+        throw new Error("CPF/CNPJ inválido")
+      }
+    }
+    
+    // Verificar se CPF/CNPJ já existe
+    if (customerData.cpf_cnpj && customerData.cpf_cnpj.trim() !== '') {
+      const existingCustomer = await sql`
+        SELECT id FROM customers 
+        WHERE cpf_cnpj = ${customerData.cpf_cnpj} AND is_active = true
+      `
+      if (existingCustomer.length > 0) {
+        throw new Error("CPF/CNPJ já cadastrado")
+      }
+    }
+    
+    // Verificar se email já existe
+    if (customerData.email && customerData.email.trim() !== '') {
+      const existingCustomer = await sql`
+        SELECT id FROM customers 
+        WHERE email = ${customerData.email} AND is_active = true
+      `
+      if (existingCustomer.length > 0) {
+        throw new Error("Email já cadastrado")
+      }
+    }
+
+    // Gerar ID único para o cliente
+    const customerId = nanoid()
+    console.log("🆔 ID gerado para cliente:", customerId)
+
     const result = await sql`
       INSERT INTO customers (
-        name, email, cpf_cnpj, phone, address, city, state, zipcode, birth_date, notes
+        id, name, email, cpf_cnpj, phone, "address", city, state, zipcode, notes, "createdAt", "updatedAt", is_active
       ) VALUES (
+        ${customerId},
         ${customerData.name},
         ${customerData.email || null},
         ${customerData.cpf_cnpj || null},
@@ -184,20 +324,60 @@ export async function createCustomer(customerData: Partial<Customer>): Promise<C
         ${customerData.city || null},
         ${customerData.state || null},
         ${customerData.zipcode || null},
-        ${customerData.birth_date || null},
-        ${customerData.notes || null}
+        ${customerData.notes || null},
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP,
+        true
       )
       RETURNING *
     `
+    
+    console.log("✅ Cliente criado com sucesso:", result[0])
     return result[0] as Customer
   } catch (error) {
-    console.error("Erro ao criar cliente:", error)
-    return null
+    console.error("❌ Erro ao criar cliente:", error)
+    throw error
   }
 }
 
 export async function updateCustomer(id: string, customerData: Partial<Customer>): Promise<Customer | null> {
   try {
+    console.log(`📝 Atualizando cliente ${id}:`, customerData)
+    
+    // Validar dados obrigatórios
+    if (!customerData.name || customerData.name.trim() === '') {
+      throw new Error("Nome é obrigatório")
+    }
+    
+    // Validar CPF/CNPJ se fornecido
+    if (customerData.cpf_cnpj && customerData.cpf_cnpj.trim() !== '') {
+      if (!validateCPFCNPJ(customerData.cpf_cnpj)) {
+        throw new Error("CPF/CNPJ inválido")
+      }
+    }
+    
+    // Verificar se CPF/CNPJ já existe em outro cliente
+    if (customerData.cpf_cnpj && customerData.cpf_cnpj.trim() !== '') {
+      const existingCustomer = await sql`
+        SELECT id FROM customers 
+        WHERE cpf_cnpj = ${customerData.cpf_cnpj} AND id != ${id} AND is_active = true
+      `
+      if (existingCustomer.length > 0) {
+        throw new Error("CPF/CNPJ já cadastrado em outro cliente")
+      }
+    }
+    
+    // Verificar se email já existe em outro cliente
+    if (customerData.email && customerData.email.trim() !== '') {
+      const existingCustomer = await sql`
+        SELECT id FROM customers 
+        WHERE email = ${customerData.email} AND id != ${id} AND is_active = true
+      `
+      if (existingCustomer.length > 0) {
+        throw new Error("Email já cadastrado em outro cliente")
+      }
+    }
+
     const result = await sql`
       UPDATE customers SET
         name = ${customerData.name},
@@ -208,15 +388,16 @@ export async function updateCustomer(id: string, customerData: Partial<Customer>
         city = ${customerData.city || null},
         state = ${customerData.state || null},
         zipcode = ${customerData.zipcode || null},
-        birth_date = ${customerData.birth_date || null},
         notes = ${customerData.notes || null},
-        updated_at = CURRENT_TIMESTAMP
+        "updatedAt" = CURRENT_TIMESTAMP
       WHERE id = ${id}
       RETURNING *
     `
+    
+    console.log("✅ Cliente atualizado com sucesso:", result[0])
     return (result[0] as Customer) || null
   } catch (error) {
-    console.error("Erro ao atualizar cliente:", error)
-    return null
+    console.error("❌ Erro ao atualizar cliente:", error)
+    throw error
   }
 }

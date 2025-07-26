@@ -25,6 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const customerData = await request.json()
+    console.log(`📝 Recebendo dados para atualizar cliente ${params.id}:`, customerData)
 
     const customer = await updateCustomer(params.id, customerData)
 
@@ -34,7 +35,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     return NextResponse.json({ customer })
   } catch (error) {
-    console.error("Erro ao atualizar cliente:", error)
-    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
+    console.error("❌ Erro ao atualizar cliente:", error)
+    
+    const errorMessage = error instanceof Error ? error.message : "Erro interno do servidor"
+    return NextResponse.json({ 
+      error: errorMessage,
+      details: error instanceof Error ? error.stack : undefined
+    }, { status: 400 })
   }
 }

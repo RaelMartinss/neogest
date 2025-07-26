@@ -7,126 +7,79 @@ interface Filters {
   categoryId?: string
   supplierId?: string
   status?: "NORMAL" | "LOW" | "OUT_OF_STOCK"
+  page?: number
+  limit?: number
 }
 
-/**
- * Busca todos os produtos e aplica filtros no JavaScript.
- */
 export async function getAllProducts(filters: Filters = {}) {
-  let prod = await sql`SELECT * FROM products`;
-  
-  // Seleciona com snake_case e cria alias camelCase
-  let products = await sql`
-    SELECT
-      p.id,
-      p.codigo,
-      p.name,
-      p.barcode,
-      p.description,
-      p."categoryId"      AS "categoryId",
-      p."supplierId"      AS "supplierId",
-      p."stockQuantity"   AS "stockQuantity",
-      p."minStock"        AS "minStock",
-      p."maxStock"        AS "maxStock",
-      p."costPrice"       AS "costPrice",
-      p."salePrice"       AS "salePrice",
-      p."isActive"        AS "isActive",
-      p.status,
-      p."createdAt"       AS "createdAt",
-      p."updatedAt"       AS "updatedAt",
-      c.name             AS "categoryName",
-      s.name             AS "supplierName"
-    FROM products p
-    LEFT JOIN categories c ON p."categoryId" = c.id
-    LEFT JOIN suppliers  s ON p."supplierId" = s.id
-    ORDER BY p.codigo, p.name
-  ` 
+  try {
+    const {
+      search = "",
+      categoryId = "",
+      supplierId = "",
+      status = "",
+      page = 1,
+      limit = 50,
+    } = filters
 
+    let whereClauses = []
+    let params: any[] = []
 
-  console.log("🔎 Total produtos do banco antes dos filtros:", products.length)
-
-
-  const { search = "", categoryId = "", supplierId = "", status = "" } = filters
-
-  // ---------- filtros no JS ----------
-  if (search) {
-    const t = search.toLowerCase()
-    products = products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(t) ||
-        (p.codigo && p.codigo.includes(t)) ||
-        (p.barcode && p.barcode.includes(t)) ||
-        (p.description && p.description.toLowerCase().includes(t)),
-    )
-  }
-
-  if (categoryId && categoryId !== "all") {
-    console.log("🔍 Filtrando por categoria:", categoryId, "tipo:", typeof categoryId)
-    console.log("🔍 Produtos antes do filtro:", products.length)
-    console.log("🔍 Exemplos de categoryId dos produtos:", products.slice(0, 3).map(p => ({ 
-      id: p.id, 
-      categoryId: p.categoryId, 
-      categoryIdType: typeof p.categoryId,
-      categoryName: p.categoryName 
-    })))
-    
-    // Testar diferentes formas de comparação
-    const filtered1 = products.filter((p) => String(p.categoryId) === categoryId)
-    const filtered2 = products.filter((p) => p.categoryId === categoryId)
-    const filtered3 = products.filter((p) => String(p.categoryId) === String(categoryId))
-    
-    console.log("🔍 Comparação String(p.categoryId) === categoryId:", filtered1.length)
-    console.log("🔍 Comparação p.categoryId === categoryId:", filtered2.length)
-    console.log("🔍 Comparação String(p.categoryId) === String(categoryId):", filtered3.length)
-    
-    products = products.filter((p) => String(p.categoryId) === categoryId)
-    
-    console.log("🔍 Produtos após filtro de categoria:", products.length)
-    console.log("🔍 Produtos filtrados:", products.map(p => ({ id: p.id, name: p.name, categoryId: p.categoryId, categoryName: p.categoryName })))
-  }
-  
-  if (supplierId && supplierId !== "all") {
-    products = products.filter((p) => String(p.supplierId) === supplierId)
-  }
-
-  if (status && status !== "all") {
-    switch (status) {
-      case "low_stock":
-        products = products.filter((p) => p.stockQuantity <= p.minStock && p.stockQuantity > 0)
-        break
-      case "out_of_stock":
-        products = products.filter((p) => p.stockQuantity === 0)
-        break
-      case "active":
-        products = products.filter((p) => p.isActive === true)
-        break
-      case "inactive":
-        products = products.filter((p) => p.isActive === false)
-        break
+    if (search) {
+      whereClauses.push(`(LOWER(name) LIKE $${params.length + 1} OR codigo LIKE $${params.length + 1} OR barcode LIKE $${params.length + 1} OR LOWER(description) LIKE $${params.length + 1})`)
+      params.push(`%${search.toLowerCase()}%`)
     }
-  }
+    if (categoryId && categoryId !== "all") {
+      whereClauses.push(`"categoryId" = $${params.length + 1}`)
+      params.push(categoryId)
+    }
+    if (supplierId && supplierId !== "all") {
+      whereClauses.push(`"supplierId" = $${params.length + 1}`)
+      params.push(supplierId)
+    }
+    if (status && status !== "all") {
+      if (status === "low_stock") {
+        whereClauses.push(`"stockQuantity" <= "minStock" AND "stockQuantity" > 0`)
+      } else if (status === "out_of_stock") {
+        whereClauses.push(`"stockQuantity" = 0`)
+      } else if (status === "active") {
+        whereClauses.push(`"isActive" = true`)
+      } else if (status === "inactive") {
+        whereClauses.push(`"isActive" = false`)
+      }
+    }
 
-  // normalizar numéricos e converter BigInt
-  return products.map((p) => ({
-    ...p,
-    id: String(p.id),
-    codigo: p.codigo || "",
-    categoryId: p.categoryId ? String(p.categoryId) : null,
-    supplierId: p.supplierId ? String(p.supplierId) : null,
-    categoryName: p.categoryName || null,
-    supplierName: p.supplierName || null,
-    stockQuantity: Number(p.stockQuantity) || 0,
-    minStock: Number(p.minStock) || 0,
-    maxStock: Number(p.maxStock) || 0,
-    costPrice: Number(p.costPrice) || 0,
-    salePrice: Number(p.salePrice) || 0,
-    isActive: Boolean(p.isActive),
-  }))
-  
+    const where = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : ""
+    const offset = (page - 1) * limit
+    const query = `
+      SELECT *
+      FROM products
+      ${where}
+      ORDER BY codigo, name
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+    `
+    console.log("[getAllProducts][RESTORED] query:", query)
+    console.log("[getAllProducts][RESTORED] params:", params, "limit:", limit, "offset:", offset)
+    const result = await sql.unsafe(query, [...params, limit, offset])
+    const products = Array.isArray(result) ? result : result?.rows || []
+    console.log("[getAllProducts][RESTORED] produtos retornados:", products.length)
+    return products.map((p: any) => ({
+      ...p,
+      id: String(p.id),
+      stockQuantity: Number(p.stockQuantity) || 0,
+      minStock: Number(p.minStock) || 0,
+      maxStock: Number(p.maxStock) || 0,
+      costPrice: Number(p.costPrice) || 0,
+      salePrice: Number(p.salePrice) || 0,
+      isActive: Boolean(p.isActive),
+    }))
+  } catch (error) {
+    console.error("[getAllProducts][RESTORED] ERRO:", error)
+    throw error
+  }
 }
 
 export async function getProductStats() {
-  console.log("🔍 Buscando estatísticas dos produtos...++++++++++++++++++++++++++++++++++++++++++++")
   try {
     const [row] = await sql`
       SELECT

@@ -43,7 +43,6 @@ function CustomerModal({ customer, isOpen, onClose, onSave }: CustomerModalProps
     city: "",
     state: "",
     zipcode: "",
-    birth_date: "",
     notes: "",
   })
 
@@ -60,7 +59,6 @@ function CustomerModal({ customer, isOpen, onClose, onSave }: CustomerModalProps
         city: "",
         state: "",
         zipcode: "",
-        birth_date: "",
         notes: "",
       })
     }
@@ -136,14 +134,6 @@ function CustomerModal({ customer, isOpen, onClose, onSave }: CustomerModalProps
               <Input
                 value={formData.zipcode || ""}
                 onChange={(e) => setFormData({ ...formData, zipcode: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Data de Nascimento</label>
-              <Input
-                type="date"
-                value={formData.birth_date || ""}
-                onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
               />
             </div>
             <div className="md:col-span-2">
@@ -249,12 +239,7 @@ function CustomerDetailsModal({ customer, purchases, isOpen, onClose }: Customer
                     </span>
                   </div>
                 )}
-                {customer.birth_date && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm">{formatDate(customer.birth_date)}</span>
-                  </div>
-                )}
+
                 {customer.notes && (
                   <div className="pt-2">
                     <p className="text-sm font-medium">Observações:</p>
@@ -406,6 +391,8 @@ export default function ClientesControl() {
 
   const handleSaveCustomer = async (customerData: Partial<Customer>) => {
     try {
+      console.log("💾 Salvando cliente:", customerData)
+      
       const url = editingCustomer ? `/api/customers/${editingCustomer.id}` : "/api/customers"
       const method = editingCustomer ? "PUT" : "POST"
 
@@ -415,13 +402,22 @@ export default function ClientesControl() {
         body: JSON.stringify(customerData),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
+        console.log("✅ Cliente salvo com sucesso:", data)
         setIsModalOpen(false)
         setEditingCustomer(undefined)
         fetchCustomers()
+        // Aqui você pode adicionar uma notificação de sucesso
+      } else {
+        console.error("❌ Erro ao salvar cliente:", data.error)
+        // Aqui você pode adicionar uma notificação de erro
+        alert(`Erro ao salvar cliente: ${data.error}`)
       }
     } catch (error) {
-      console.error("Erro ao salvar cliente:", error)
+      console.error("❌ Erro ao salvar cliente:", error)
+      alert("Erro ao salvar cliente. Verifique a conexão e tente novamente.")
     }
   }
 

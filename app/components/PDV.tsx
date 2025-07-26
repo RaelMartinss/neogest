@@ -657,6 +657,7 @@ export default function PDV() {
 
   const fetchCustomers = async () => {
     try {
+      console.log("🔄 Buscando clientes para PDV...")
       const response = await fetch("/api/customers")
 
       if (!response.ok) {
@@ -673,9 +674,12 @@ export default function PDV() {
       const ct = response.headers.get("content-type") || ""
       const data = ct.includes("application/json") ? await response.json() : { customers: [] }
 
+      console.log("👥 Clientes recebidos:", data.customers?.length || 0)
+      console.log("📋 Primeiros clientes:", data.customers?.slice(0, 3).map(c => ({ id: c.id, name: c.name })))
+
       setCustomers(data.customers || [])
     } catch (error) {
-      console.error("Erro ao buscar clientes:", error)
+      console.error("❌ Erro ao buscar clientes:", error)
       showError(`Erro ao buscar clientes: ${error instanceof Error ? error.message : "desconhecido"}`)
     }
   }
@@ -820,11 +824,28 @@ export default function PDV() {
     e.preventDefault()
     if (!barcode.trim() || saleStatus !== "open") return
 
-    console.log(`🔍 Procurando produto com código: ${barcode.trim()}`)
+    const searchCode = barcode.trim()
+    console.log(`🔍 Procurando produto com código: "${searchCode}"`)
     console.log(`📦 Produtos disponíveis: ${products.length}`)
 
-    const product = products.find((p) => p.codigo === barcode.trim() || p.barcode === barcode.trim())
-    console.log(`🎯 Produto encontrado:`, product)
+    // Buscar por código de barras ou código interno
+    const product = products.find((p) => {
+      const matchCodigo = p.codigo && p.codigo.toString() === searchCode
+      const matchBarcode = p.barcode && p.barcode.toString() === searchCode
+      
+      if (matchCodigo || matchBarcode) {
+        console.log(`✅ Produto encontrado:`, {
+          id: p.id,
+          name: p.name,
+          codigo: p.codigo,
+          barcode: p.barcode,
+          stockQuantity: p.stockQuantity,
+          salePrice: p.salePrice
+        })
+        return true
+      }
+      return false
+    })
 
     if (product) {
       addToCart(product)
@@ -835,7 +856,14 @@ export default function PDV() {
       }, 100)
     } else {
       console.log("❌ Produto não encontrado nos produtos carregados")
-      showError("Produto não encontrado!")
+      console.log("🔍 Códigos disponíveis para debug:")
+      products.slice(0, 5).forEach((p, i) => {
+        console.log(`  ${i + 1}. ID: ${p.id}, Nome: ${p.name}, Código: "${p.codigo}", Barras: "${p.barcode}"`)
+      })
+      if (products.length > 5) {
+        console.log(`  ... e mais ${products.length - 5} produtos`)
+      }
+      showError(`Produto não encontrado! Código: ${searchCode}`)
       setBarcode("")
     }
   }
@@ -1880,6 +1908,7 @@ ${saleData.cpfUsuario ? "" : "CONSUMIDOR NÃO IDENTIFICADO"}
               value={selectedCustomer?.id || ""}
               onChange={(e) => {
                 const customer = customers.find((c) => c.id === e.target.value)
+                console.log("👤 Cliente selecionado:", customer)
                 setSelectedCustomer(customer || null)
               }}
               className="border rounded px-2 py-1 text-xs sm:text-sm flex-1 min-w-0"
@@ -1892,6 +1921,10 @@ ${saleData.cpfUsuario ? "" : "CONSUMIDOR NÃO IDENTIFICADO"}
                 </option>
               ))}
             </select>
+            {/* Debug info */}
+            <div className="text-xs text-gray-500">
+              {customers.length > 0 ? `${customers.length} clientes carregados` : "Nenhum cliente"}
+            </div>
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-2 text-xs">

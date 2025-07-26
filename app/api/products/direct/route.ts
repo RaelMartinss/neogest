@@ -1,54 +1,60 @@
-import { NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
+import { type NextRequest, NextResponse } from "next/server"
+import { neon } from "@neondatabase/serverless"
 
-const sql = neon(process.env.DATABASE_URL!);
+export const runtime = "nodejs"
 
-export async function GET() {
+const sql = neon(process.env.DATABASE_URL!)
+
+export async function GET(req: NextRequest) {
   try {
-    console.log("🔍 Buscando produtos direto do banco...");
+    console.log("🔄 API /api/products/direct - Buscando produtos para PDV...")
 
+    // Buscar apenas produtos ativos com informações essenciais para PDV
     const products = await sql`
-        SELECT
-          id,
-          name,
-          barcode,
-          description,
-          "stockQuantity",
-          "salePrice",
-          "isActive"
-        FROM products
-        WHERE "isActive" = true
-          AND "stockQuantity" > 0
-        ORDER BY name
-        LIMIT 20
-      `;
+      SELECT 
+        id,
+        name,
+        barcode,
+        codigo,
+        "stockQuantity",
+        "salePrice",
+        "isActive",
+        status
+      FROM products 
+      WHERE "isActive" = true 
+      ORDER BY codigo, name
+    `
 
-    console.log(`✅ Encontrados ${products.length} produtos`);
+    console.log(`✅ ${products.length} produtos encontrados para PDV`)
 
-    // Converter BigInt para evitar erro de serialização
-    const cleanProducts = products.map((p) => ({
-      id: String(p.id),
-      name: p.name,
-      barcode: p.barcode,
-      description: p.description,
-      stockQuantity: Number(p.stockQuantity),
-      salePrice: Number(p.salePrice),
-      isActive: Boolean(p.isActive),
-    }));
+    // Mapear os produtos para o formato esperado pelo PDV
+    const mappedProducts = products.map((product: any) => ({
+      id: String(product.id),
+      name: product.name,
+      barcode: product.barcode || "",
+      codigo: product.codigo || "",
+      stockQuantity: Number(product.stockQuantity) || 0,
+      salePrice: Number(product.salePrice) || 0,
+      isActive: Boolean(product.isActive),
+      status: product.status || "NORMAL"
+    }))
+
+    console.log("🏷️ Códigos de barras disponíveis:", mappedProducts.map(p => p.barcode))
 
     return NextResponse.json({
       success: true,
-      count: cleanProducts.length,
-      products: cleanProducts,
-    });
+      products: mappedProducts
+    })
+
   } catch (error) {
-    console.error("❌ Erro ao buscar produtos:", error);
+    console.error("❌ Erro na API /api/products/direct:", error)
     return NextResponse.json(
-      {
-        error: "Erro ao buscar produtos",
-        details: error.message,
-      },
+      { 
+        success: false, 
+        error: "Erro interno ao buscar produtos",
+        details: error instanceof Error ? error.message : "Erro desconhecido"
+      }, 
       { status: 500 }
-    );
+    )
   }
-}
+} 

@@ -181,3 +181,65 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Erro interno ao criar produto" }, { status: 500 })
   }
 }
+
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const {
+      id,
+      name,
+      barcode,
+      category,
+      supplier,
+      stockQuantity,
+      minStock,
+      maxStock,
+      costPrice,
+      salePrice,
+      isActive = true,
+      status = 'NORMAL',
+      description,
+      codigo,
+    } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID do produto é obrigatório' }, { status: 400 })
+    }
+
+    const categoryResult = await sql`SELECT id FROM categories WHERE name = ${category}`
+    const supplierResult = await sql`SELECT id FROM suppliers WHERE name = ${supplier}`
+
+    if (categoryResult.length === 0) {
+      return NextResponse.json({ error: `Categoria '${category}' não encontrada` }, { status: 400 })
+    }
+    if (supplierResult.length === 0) {
+      return NextResponse.json({ error: `Fornecedor '${supplier}' não encontrado` }, { status: 400 })
+    }
+    const categoryId = categoryResult[0].id
+    const supplierId = supplierResult[0].id
+
+    await sql`
+      UPDATE products SET
+        name = ${name},
+        barcode = ${barcode},
+        "categoryId" = ${categoryId},
+        "supplierId" = ${supplierId},
+        "stockQuantity" = ${stockQuantity},
+        "minStock" = ${minStock},
+        "maxStock" = ${maxStock},
+        "costPrice" = ${costPrice},
+        "salePrice" = ${salePrice},
+        "isActive" = ${isActive},
+        status = ${status},
+        description = ${description},
+        codigo = ${codigo},
+        "updatedAt" = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+    `
+
+    return NextResponse.json({ message: 'Produto atualizado com sucesso' })
+  } catch (err) {
+    console.error('Erro no PUT /api/products:', err)
+    return NextResponse.json({ error: 'Erro interno ao atualizar produto' }, { status: 500 })
+  }
+}

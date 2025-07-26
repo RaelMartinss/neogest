@@ -1,55 +1,65 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Edit, AlertTriangle, Package, TrendingDown, TrendingUp, RefreshCw, Trash2 } from "lucide-react"
-import type { Product, StockStats, Category, Supplier } from "../types/product"
-import { useAuth } from "@/contexts/auth-context"
-import ProductModal from "./ProductModal"
-import StockMovementModal from "./StockMovementModal"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Search,
+  Plus,
+  Edit,
+  AlertTriangle,
+  Package,
+  TrendingDown,
+  TrendingUp,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
+import type { Product, StockStats, Category, Supplier } from "../types/product";
+import { useAuth } from "@/contexts/auth-context";
+import ProductModal from "./ProductModal";
+import StockMovementModal from "./StockMovementModal";
 
 export default function EstoqueControl() {
-  const { hasPermission } = useAuth()
-  const [products, setProducts] = useState<Product[]>([])
+  const { hasPermission } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
   const [stats, setStats] = useState<StockStats>({
     totalProducts: 0,
     lowStockProducts: 0,
     outOfStockProducts: 0,
     totalValue: 0,
     activeProducts: 0,
-  })
-  const [categories, setCategories] = useState<Category[]>([])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [selectedSupplier, setSelectedSupplier] = useState("all")
-  const [selectedStatus, setSelectedStatus] = useState("all")
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [showProductModal, setShowProductModal] = useState(false)
-  const [showStockModal, setShowStockModal] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  
+  });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedSupplier, setSelectedSupplier] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
   // Estados para paginação
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(10)
-  const [totalFiltered, setTotalFiltered] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [totalFiltered, setTotalFiltered] = useState(0);
 
   useEffect(() => {
-    setCurrentPage(1) // Reset para primeira página quando mudar filtros
-    fetchProducts()
-  }, [searchTerm, selectedCategory, selectedSupplier, selectedStatus])
+    setCurrentPage(1); // Reset para primeira página quando mudar filtros
+    fetchProducts();
+  }, [searchTerm, selectedCategory, selectedSupplier, selectedStatus]);
 
   // Remover o useEffect separado para currentPage para evitar loops
 
   const fetchProducts = async (page = currentPage) => {
     try {
-      setIsLoading(true)
-      setError(null)
-      console.log("Buscando produtos...")
+      setIsLoading(true);
+      setError(null);
+      console.log("Buscando produtos...");
 
       const params = new URLSearchParams({
         search: searchTerm,
@@ -58,38 +68,47 @@ export default function EstoqueControl() {
         status: selectedStatus,
         page: String(page),
         limit: String(itemsPerPage),
-      })
+      });
 
       const response = await fetch(`/api/products?${params}`, {
         credentials: "include",
-      })
+      });
 
-      console.log("Status da resposta:", response.status)
+      console.log("Status da resposta:", response.status);
 
       if (response.ok) {
-        const data = await response.json()
-        console.log("Dados recebidos:", data)
+        const data = await response.json();
+        console.log("Dados recebidos:", data);
 
         // Verificar e normalizar dados dos produtos
-        const normalizedProducts = (data.products || []).map((product: any) => ({
-          ...product,
-          costPrice: Number(product.cost_price) || 0,
-          salePrice: Number(product.sale_price) || 0,
-          stockQuantity: Number(product.stockQuantity) || 0,
-          minStock: Number(product.min_stock) || 0,
-          maxStock: Number(product.max_stock) || 0,
-          // Manter compatibilidade com nomes antigos
-          costPrice: Number(product.costPrice) || 0,
-          salePrice: Number(product.sale_price) || 0,
-          stockQuantity: Number(product.stockQuantity) || 0,
-          minStock: Number(product.minStock) || 0,
-          maxStock: Number(product.maxStock) || 0,
-          isActive: product.is_active !== false,
-          codigo: product.codigo || "",
-        }))
+        const normalizedProducts = (data.products || []).map(
+          (product: any) => ({
+            ...product,
+            costPrice: Number(product.cost_price) || 0,
+            salePrice: Number(product.sale_price) || 0,
+            stockQuantity: Number(product.stockQuantity) || 0,
+            minStock: Number(product.min_stock) || 0,
+            maxStock: Number(product.max_stock) || 0,
+            // Manter compatibilidade com nomes antigos
+            costPrice: Number(product.costPrice) || 0,
+            salePrice: Number(product.sale_price) || 0,
+            stockQuantity: Number(product.stockQuantity) || 0,
+            minStock: Number(product.minStock) || 0,
+            maxStock: Number(product.maxStock) || 0,
+            isActive: product.is_active !== false,
+            codigo: product.codigo || "",
+          })
+        );
 
-        setProducts(normalizedProducts)
-        setTotalFiltered(data.stats?.totalProducts || normalizedProducts.length)
+        console.log(
+          "Produtos normalizados======================================================:",
+          normalizedProducts
+        );
+
+        setProducts(normalizedProducts);
+        setTotalFiltered(
+          data.stats?.totalProducts || normalizedProducts.length
+        );
 
         // Verificar e normalizar stats
         const normalizedStats = {
@@ -98,102 +117,104 @@ export default function EstoqueControl() {
           outOfStockProducts: Number(data.stats?.outOfStockProducts) || 0,
           totalValue: Number(data.stats?.totalValue) || 0,
           activeProducts: Number(data.stats?.activeProducts) || 0,
-        }
+        };
 
-        setStats(normalizedStats)
-        setCategories(data.categories || [])
-        setSuppliers(data.suppliers || [])
+        setStats(normalizedStats);
+        setCategories(data.categories || []);
+        setSuppliers(data.suppliers || []);
       } else {
-        const errorText = await response.text()
-        console.error("Erro na resposta:", errorText)
-        setError(`Erro ao buscar produtos: ${response.status}`)
+        const errorText = await response.text();
+        console.error("Erro na resposta:", errorText);
+        setError(`Erro ao buscar produtos: ${response.status}`);
       }
     } catch (error) {
-      console.error("Erro ao buscar produtos:", error)
-      setError("Erro de conexão ao buscar produtos")
+      console.error("Erro ao buscar produtos:", error);
+      setError("Erro de conexão ao buscar produtos");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleDeleteProduct = async (productId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este produto?")) return
+    if (!confirm("Tem certeza que deseja excluir este produto?")) return;
 
     try {
       const response = await fetch(`/api/products/${productId}`, {
         method: "DELETE",
         credentials: "include",
-      })
+      });
 
       if (response.ok) {
-        fetchProducts()
+        fetchProducts();
       } else {
-        const errorData = await response.json()
-        alert(errorData.error || "Erro ao excluir produto")
+        const errorData = await response.json();
+        alert(errorData.error || "Erro ao excluir produto");
       }
     } catch (error) {
-      console.error("Erro ao excluir produto:", error)
-      alert("Erro ao excluir produto")
+      console.error("Erro ao excluir produto:", error);
+      alert("Erro ao excluir produto");
     }
-  }
+  };
 
   const handleEditProduct = (product: Product) => {
-    setSelectedProduct(product)
-    setShowProductModal(true)
-  }
+    setSelectedProduct(product);
+    setShowProductModal(true);
+  };
 
   const handleStockMovement = (product: Product) => {
-    setSelectedProduct(product)
-    setShowStockModal(true)
-  }
+    setSelectedProduct(product);
+    setShowStockModal(true);
+  };
 
   const getStatusBadge = (product: Product) => {
-    const isActive = product.isActive ?? product.isActive ?? true
-    const stockQuantity = product.stockQuantity ?? product.stockQuantity ?? 0
-    const minStock = product.minStock ?? product.minStock ?? 0
+    const isActive = product.isActive ?? product.isActive ?? true;
+    const stockQuantity = product.stockQuantity ?? product.stockQuantity ?? 0;
+    const minStock = product.minStock ?? product.minStock ?? 0;
 
     if (!isActive) {
-      return <Badge variant="destructive">Inativo</Badge>
+      return <Badge variant="destructive">Inativo</Badge>;
     }
     if (stockQuantity === 0) {
-      return <Badge variant="destructive">Sem Estoque</Badge>
+      return <Badge variant="destructive">Sem Estoque</Badge>;
     }
     if (stockQuantity <= minStock) {
-      return <Badge className="bg-yellow-100 text-yellow-800">Estoque Baixo</Badge>
+      return (
+        <Badge className="bg-yellow-100 text-yellow-800">Estoque Baixo</Badge>
+      );
     }
-    return <Badge variant="default">Normal</Badge>
-  }
+    return <Badge variant="default">Normal</Badge>;
+  };
 
-  const canEdit = hasPermission("estoque", "edit")
-  const canDelete = hasPermission("estoque", "delete")
-  const canCreate = hasPermission("estoque", "create")
+  const canEdit = hasPermission("estoque", "edit");
+  const canDelete = hasPermission("estoque", "delete");
+  const canCreate = hasPermission("estoque", "create");
 
   // Lógica de paginação
-  const totalPages = Math.ceil(totalFiltered / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentProducts = products // já vem paginado do backend
+  const totalPages = Math.ceil(totalFiltered / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentProducts = products; // já vem paginado do backend
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-    fetchProducts(page)
-  }
+    setCurrentPage(page);
+    fetchProducts(page);
+  };
 
   const handlePreviousPage = () => {
     if (currentPage > 1) {
-      const newPage = currentPage - 1
-      setCurrentPage(newPage)
-      fetchProducts(newPage)
+      const newPage = currentPage - 1;
+      setCurrentPage(newPage);
+      fetchProducts(newPage);
     }
-  }
+  };
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
-      const newPage = currentPage + 1
-      setCurrentPage(newPage)
-      fetchProducts(newPage)
+      const newPage = currentPage + 1;
+      setCurrentPage(newPage);
+      fetchProducts(newPage);
     }
-  }
+  };
 
   if (isLoading) {
     return (
@@ -203,14 +224,16 @@ export default function EstoqueControl() {
           <span className="ml-2">Carregando...</span>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
     return (
       <div className="p-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Controle de Estoque</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Controle de Estoque
+          </h1>
           <p className="text-gray-600">Gestão completa do inventário</p>
         </div>
         <Card className="max-w-md mx-auto">
@@ -223,13 +246,15 @@ export default function EstoqueControl() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Controle de Estoque</h1>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Controle de Estoque
+        </h1>
         <p className="text-gray-600">Gestão completa do inventário</p>
       </div>
 
@@ -252,7 +277,9 @@ export default function EstoqueControl() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Estoque Baixo</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.lowStockProducts || 0}</p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {stats.lowStockProducts || 0}
+                </p>
               </div>
               <AlertTriangle className="h-8 w-8 text-yellow-600" />
             </div>
@@ -264,7 +291,9 @@ export default function EstoqueControl() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Sem Estoque</p>
-                <p className="text-2xl font-bold text-red-600">{stats.outOfStockProducts || 0}</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {stats.outOfStockProducts || 0}
+                </p>
               </div>
               <TrendingDown className="h-8 w-8 text-red-600" />
             </div>
@@ -276,7 +305,9 @@ export default function EstoqueControl() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Produtos Ativos</p>
-                <p className="text-2xl font-bold text-green-600">{stats.activeProducts || 0}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {stats.activeProducts || 0}
+                </p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-600" />
             </div>
@@ -288,7 +319,9 @@ export default function EstoqueControl() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Valor Total</p>
-                <p className="text-2xl font-bold text-green-600">R$ {(stats.totalValue || 0).toFixed(2)}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  R$ {(stats.totalValue || 0).toFixed(2)}
+                </p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-600" />
             </div>
@@ -385,16 +418,27 @@ export default function EstoqueControl() {
                 ) : (
                   currentProducts.map((product) => {
                     // Garantir que os valores existem e são números
-                    const stockQuantity = product.stockQuantity ?? 0
-                    const minStock = product.minStock ?? 0
-                    const maxStock = product.maxStock ??  0
-                    const costPrice = product.costPrice ?? 0
-                    const salePrice = product.salePrice ?? 0
-                    const categoryName = product.categoryName || product.category_name || product.category || "N/A"
-                    const supplierName = product.supplierName || product.supplier_name || product.supplier || "N/A"
+                    const stockQuantity = product.stockQuantity ?? 0;
+                    const minStock = product.minStock ?? 0;
+                    const maxStock = product.maxStock ?? 0;
+                    const costPrice = product.costPrice ?? 0;
+                    const salePrice = product.salePrice ?? 0;
+                    const categoryName =
+                      product.categoryName ||
+                      product.category_name ||
+                      product.category ||
+                      "N/A";
+                    const supplierName =
+                      product.supplierName ||
+                      product.supplier_name ||
+                      product.supplier ||
+                      "N/A";
 
                     return (
-                      <tr key={product.id} className="border-b hover:bg-gray-50">
+                      <tr
+                        key={product.id}
+                        className="border-b hover:bg-gray-50"
+                      >
                         <td className="p-3">
                           <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
                             {product.codigo || "N/A"}
@@ -402,18 +446,29 @@ export default function EstoqueControl() {
                         </td>
                         <td className="p-3">
                           <div>
-                            <p className="font-medium">{product.name || "N/A"}</p>
-                            <p className="text-sm text-gray-600">{product.barcode || "N/A"}</p>
+                            <p className="font-medium">
+                              {product.name || "N/A"}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {product.barcode || "N/A"}
+                            </p>
                           </div>
                         </td>
                         <td className="p-3">{categoryName}</td>
                         <td className="p-3">
                           <span
-                            className={`font-bold ${stockQuantity <= minStock ? "text-red-600" : "text-green-600"}`}
+                            className={`font-bold ${
+                              stockQuantity <= minStock
+                                ? "text-red-600"
+                                : "text-green-600"
+                            }`}
                           >
                             {stockQuantity}
                           </span>
-                          <span className="text-gray-500 text-sm"> / {maxStock}</span>
+                          <span className="text-gray-500 text-sm">
+                            {" "}
+                            / {maxStock}
+                          </span>
                         </td>
                         <td className="p-3">R$ {costPrice.toFixed(2)}</td>
                         <td className="p-3">R$ {salePrice.toFixed(2)}</td>
@@ -421,36 +476,49 @@ export default function EstoqueControl() {
                         <td className="p-3">{getStatusBadge(product)}</td>
                         <td className="p-3">
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleStockMovement(product)}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleStockMovement(product)}
+                            >
                               <Package className="w-4 h-4" />
                             </Button>
                             {canEdit && (
-                              <Button variant="ghost" size="sm" onClick={() => handleEditProduct(product)}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditProduct(product)}
+                              >
                                 <Edit className="w-4 h-4" />
                               </Button>
                             )}
                             {canDelete && (
-                              <Button variant="ghost" size="sm" onClick={() => handleDeleteProduct(product.id)}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteProduct(product.id)}
+                              >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             )}
                           </div>
                         </td>
                       </tr>
-                    )
+                    );
                   })
                 )}
               </tbody>
             </table>
           </div>
-          
+
           {/* Controles de Paginação */}
           {totalFiltered > 0 && (
             <div className="flex items-center justify-between px-6 py-4 border-t">
               <div className="text-sm text-gray-600">
-                Mostrando {startIndex + 1} a {Math.min(endIndex, totalFiltered)} de {totalFiltered} produtos
+                Mostrando {startIndex + 1} a {Math.min(endIndex, totalFiltered)}{" "}
+                de {totalFiltered} produtos
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -460,34 +528,36 @@ export default function EstoqueControl() {
                 >
                   Anterior
                 </Button>
-                
+
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNumber
+                    let pageNumber;
                     if (totalPages <= 5) {
-                      pageNumber = i + 1
+                      pageNumber = i + 1;
                     } else if (currentPage <= 3) {
-                      pageNumber = i + 1
+                      pageNumber = i + 1;
                     } else if (currentPage >= totalPages - 2) {
-                      pageNumber = totalPages - 4 + i
+                      pageNumber = totalPages - 4 + i;
                     } else {
-                      pageNumber = currentPage - 2 + i
+                      pageNumber = currentPage - 2 + i;
                     }
-                    
+
                     return (
                       <Button
                         key={pageNumber}
-                        variant={currentPage === pageNumber ? "default" : "outline"}
+                        variant={
+                          currentPage === pageNumber ? "default" : "outline"
+                        }
                         size="sm"
                         onClick={() => handlePageChange(pageNumber)}
                         className="w-8 h-8 p-0"
                       >
                         {pageNumber}
                       </Button>
-                    )
+                    );
                   })}
                 </div>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -509,13 +579,13 @@ export default function EstoqueControl() {
           categories={categories}
           suppliers={suppliers}
           onClose={() => {
-            setShowProductModal(false)
-            setSelectedProduct(null)
+            setShowProductModal(false);
+            setSelectedProduct(null);
           }}
           onSave={() => {
-            fetchProducts()
-            setShowProductModal(false)
-            setSelectedProduct(null)
+            fetchProducts();
+            setShowProductModal(false);
+            setSelectedProduct(null);
           }}
         />
       )}
@@ -524,16 +594,16 @@ export default function EstoqueControl() {
         <StockMovementModal
           product={selectedProduct}
           onClose={() => {
-            setShowStockModal(false)
-            setSelectedProduct(null)
+            setShowStockModal(false);
+            setSelectedProduct(null);
           }}
           onSave={() => {
-            fetchProducts()
-            setShowStockModal(false)
-            setSelectedProduct(null)
+            fetchProducts();
+            setShowStockModal(false);
+            setSelectedProduct(null);
           }}
         />
       )}
     </div>
-  )
+  );
 }
