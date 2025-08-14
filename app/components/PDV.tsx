@@ -105,7 +105,7 @@ export default function PDV() {
 
     try {
       const cardToken = await mp.createCardToken({
-        cardNumber: form.cardNumber.replace(/\s/g, ''), // Remover espaços
+        cardNumber: form.cardNumber.replace(/\s/g, ''),
         cardholderName: form.cardholderName,
         expiration_month: Number(month),
         expiration_year: Number(`20${year}`),
