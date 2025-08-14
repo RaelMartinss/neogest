@@ -16,12 +16,12 @@ export async function GET(req: NextRequest) {
         name,
         barcode,
         codigo,
-        "stockQuantity",
-        "salePrice",
-        "isActive",
+        stock_quantity,
+        sale_price,
+        is_active,
         status
       FROM products 
-      WHERE "isActive" = true 
+      WHERE is_Active = true 
       ORDER BY codigo, name
     `
 
