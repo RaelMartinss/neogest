@@ -314,9 +314,9 @@ export async function GET(request: Request) {
               case "inactive":
                 return p.isActive === false;
               case "low_stock":
-                return p.stockQuantity <= p.minStock && p.stockQuantity > 0;
+                return p.stock_quantity <= p.minStock && p.stock_quantity > 0;
               case "out_of_stock":
-                return p.stockQuantity === 0;
+                return p.stock_quantity === 0;
               default:
                 return true;
             }

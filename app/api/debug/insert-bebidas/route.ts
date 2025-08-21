@@ -51,7 +51,7 @@ export async function POST() {
         p.name,
         p.codigo,
         c.name as category_name,
-        p."stockQuantity"
+        p.stock_quantity
       FROM products p
       LEFT JOIN categories c ON p."categoryId" = c.id
       WHERE c.name = 'Bebidas'

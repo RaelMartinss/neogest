@@ -45,21 +45,21 @@ export async function getDashboardStats() {
     const productsInStock = await sql`
       SELECT COUNT(*) as count
       FROM products 
-      WHERE "isActive" = true AND "stockQuantity" > 0
+      WHERE "isActive" = true AND "stock_quantity" > 0
     `
 
     // Produtos com estoque baixo
     const lowStockProducts = await sql`
       SELECT COUNT(*) as count
       FROM products 
-      WHERE "isActive" = true AND "stockQuantity" <= "minStock" AND "stockQuantity" > 0
+      WHERE "is_active" = true AND "stock_quantity" <= "min_stock" AND "stock_quantity" > 0
     `
 
     // Produtos sem estoque
     const outOfStockProducts = await sql`
       SELECT COUNT(*) as count
       FROM products 
-      WHERE "isActive" = true AND "stockQuantity" = 0
+      WHERE "is_active" = true AND "stock_quantity" = 0
     `
 
     // Vendas recentes com mais detalhes
@@ -187,9 +187,9 @@ export async function getSystemAlerts() {
 
     // Verificar produtos com estoque baixo
     const lowStockProducts = await sql`
-      SELECT name, "stockQuantity", "minStock"
+      SELECT name, stock_quantity, min_stock
       FROM products
-      WHERE "stockQuantity" <= "minStock" AND "stockQuantity" > 0 AND "isActive" = true
+      WHERE stock_quantity <= min_stock AND stock_quantity > 0 AND is_active = true
       LIMIT 10
     `
 
@@ -198,7 +198,7 @@ export async function getSystemAlerts() {
         id: `low-stock-${product.name}`,
         type: "warning" as const,
         title: "Estoque Baixo",
-        message: `${product.name} tem apenas ${product.stockQuantity} unidades em estoque`,
+        message: `${product.name} tem apenas ${product.stock_quantity} unidades em estoque`,
         timestamp: new Date().toISOString(),
       })
     })
@@ -207,7 +207,7 @@ export async function getSystemAlerts() {
     const outOfStockProducts = await sql`
       SELECT name
       FROM products
-      WHERE "stockQuantity" = 0 AND "isActive" = true
+      WHERE stock_quantity = 0 AND is_active = true
       LIMIT 5
     `
 

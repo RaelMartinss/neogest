@@ -61,10 +61,10 @@ export async function POST(request: NextRequest) {
       }
 
       const product = productResult[0]
-      if (product.stockQuantity < item.quantity) {
+      if (product.stock_quantity < item.quantity) {
         console.log(`❌ Estoque insuficiente para ${product.name}`)
         return NextResponse.json(
-          { error: `Estoque insuficiente para ${product.name}. Disponível: ${product.stockQuantity}` },
+          { error: `Estoque insuficiente para ${product.name}. Disponível: ${product.stock_quantity}` },
           { status: 400 },
         )
       }
@@ -163,9 +163,9 @@ export async function POST(request: NextRequest) {
     for (const item of items) {
       const productResult = await query("SELECT * FROM products WHERE id = $1", [item.productId])
       const product = productResult[0]
-      const newStock = product.stockQuantity - item.quantity
+      const newStock = product.stock_quantity - item.quantity
     
-      await query(`UPDATE products SET "stockQuantity" = $1, "updatedAt" = CURRENT_TIMESTAMP WHERE id = $2`, [
+      await query(`UPDATE products SET stock_quantity = $1, "updated_at" = CURRENT_TIMESTAMP WHERE id = $2`, [
         newStock,
         item.productId,
       ])
