@@ -35,6 +35,7 @@ export default function Sidebar({
       module: "dashboard",
     },
     { id: "pdv", label: "PDV", icon: ShoppingCart, module: "pdv" },
+    { id: "compras", label: "Compras", icon: Package, module: "compras" },
     { id: "clientes", label: "Clientes", icon: Users, module: "clientes" },
     {
       id: "caixa",

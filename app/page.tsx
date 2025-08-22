@@ -7,6 +7,7 @@ import Header from "./components/Header"
 import Sidebar from "./components/Sidebar"
 import Dashboard from "./components/Dashboard"
 import PDV from "./components/PDV"
+import ComprasControl from "./components/ComprasControl"
 import CaixaControl from "./components/CaixaControl"
 import EstoqueControl from "./components/EstoqueControl"
 import Relatorios from "./components/Relatorios"
@@ -39,6 +40,8 @@ export default function Home() {
         return <Dashboard />
       case "pdv":
         return <PDV />
+      case "compras":
+        return <ComprasControl />
       case "clientes":
         return <ClientesControl />
       case "caixa":
