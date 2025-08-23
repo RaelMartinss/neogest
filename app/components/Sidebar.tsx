@@ -51,6 +51,7 @@ export default function Sidebar({
       icon: BarChart3,
       module: "relatorios",
     },
+    { id: "financeiro", label: "Financeiro", icon: CreditCard, module: "financeiro" },
     { id: "usuarios", label: "Usuários", icon: Users, module: "usuarios" },
     {
       id: "configuracoes",

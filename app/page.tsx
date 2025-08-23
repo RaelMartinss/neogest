@@ -15,6 +15,7 @@ import UserManagement from "./components/UserManagement"
 import ProtectedRoute from "./components/ProtectedRoute"
 import ClientesControl from "./components/ClientesControl"
 import TrocasControl from "./components/TrocasControl"
+import FinanceiroControl from "./components/FinanceiroControl"
 
 export default function Home() {
   const { user, isLoading } = useAuth()
@@ -50,6 +51,8 @@ export default function Home() {
         return <EstoqueControl />
       case "trocas":
         return <TrocasControl />
+       case "financeiro":
+        return <FinanceiroControl />  
       case "relatorios":
         return <Relatorios />
       case "usuarios":
