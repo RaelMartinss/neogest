@@ -24,84 +24,37 @@ import {
   Edit,
   Download,
   FileSpreadsheet,
-  FileIcon as FilePdf,
   BarChart3,
   PieChart,
   LineChart,
   Target,
-  Receipt,
   Bell,
   Calculator,
-  Percent,
   Activity,
   ArrowUpRight,
   ArrowDownRight,
   Minus,
   RefreshCw,
+  Trash2,
 } from "lucide-react"
+import { FilePen as FilePdf } from 'lucide-react';
 import { SimpleChart } from "./SimpleChart"
-
-interface ContaFinanceira {
-  id: number
-  descricao: string
-  tipo: "receber" | "pagar"
-  categoria: string
-  subcategoria?: string
-  valor: number
-  dataVencimento: string
-  dataPagamento?: string
-  status: "pendente" | "pago" | "vencido" | "cancelado"
-  cliente?: string
-  fornecedor?: string
-  observacoes?: string
-  recorrente: boolean
-  centroCusto?: string
-  numeroDocumento?: string
-  formaPagamento?: string
-  juros?: number
-  multa?: number
-  desconto?: number
-  valorPago?: number
-  createdAt: string
-  updatedAt: string
-}
-
-interface IndicadorFinanceiro {
-  titulo: string
-  valor: string
-  variacao: number
-  tipo: "positivo" | "negativo" | "neutro"
-  icone: any
-  cor: string
-  subtitulo?: string
-}
-
-interface MetaFinanceira {
-  id: string
-  titulo: string
-  tipo: "receita" | "despesa" | "economia"
-  valorMeta: number
-  valorAtual: number
-  prazo: string
-  status: "atingida" | "em_andamento" | "atrasada"
-}
-
-interface CategoriaFinanceira {
-  id: string
-  nome: string
-  tipo: "receber" | "pagar"
-  cor: string
-  orcamento?: number
-  gasto?: number
-}
+import type {
+  ContaFinanceira,
+  CategoriaFinanceira,
+  MetaFinanceira,
+  IndicadorFinanceiro,
+  ResumoFinanceiro,
+} from "@/lib/financial-service"
 
 export default function FinanceiroControl() {
   const [activeTab, setActiveTab] = useState("dashboard")
   const [searchTerm, setSearchTerm] = useState("")
   const [contas, setContas] = useState<ContaFinanceira[]>([])
+  const [categorias, setCategorias] = useState<CategoriaFinanceira[]>([])
   const [indicadores, setIndicadores] = useState<IndicadorFinanceiro[]>([])
   const [metas, setMetas] = useState<MetaFinanceira[]>([])
-  const [categorias, setCategorias] = useState<CategoriaFinanceira[]>([])
+  const [resumo, setResumo] = useState<ResumoFinanceiro | null>(null)
   const [filtros, setFiltros] = useState({
     periodo: "mes",
     categoria: "todas",
@@ -111,10 +64,17 @@ export default function FinanceiroControl() {
   const [isLoading, setIsLoading] = useState(false)
   const [showNovaContaModal, setShowNovaContaModal] = useState(false)
   const [showMetaModal, setShowMetaModal] = useState(false)
+  const [editingConta, setEditingConta] = useState<ContaFinanceira | null>(null)
   const [novaConta, setNovaConta] = useState<Partial<ContaFinanceira>>({
     tipo: "pagar",
-    categoria: "",
+    categoria_id: undefined,
     recorrente: false,
+    valor: 0,
+  })
+  const [novaMeta, setNovaMeta] = useState<Partial<MetaFinanceira>>({
+    tipo: "receita",
+    valor_meta: 0,
+    valor_atual: 0,
   })
 
   useEffect(() => {
@@ -124,255 +84,114 @@ export default function FinanceiroControl() {
   const carregarDadosFinanceiros = async () => {
     setIsLoading(true)
     try {
-      // Simular carregamento de dados
-      await new Promise((resolve) => setTimeout(resolve, 800))
+      // Carregar contas
+      const contasParams = new URLSearchParams({
+        user_id: "1",
+        ...Object.fromEntries(Object.entries(filtros).filter(([_, v]) => v !== "todos" && v !== "todas")),
+      })
+      if (searchTerm) contasParams.set("search", searchTerm)
 
-      // Dados mockados para demonstração
-      const contasMock: ContaFinanceira[] = [
-        {
-          id: 1,
-          descricao: "Venda - Cupom 001",
-          tipo: "receber",
-          categoria: "Vendas",
-          subcategoria: "Vendas à Vista",
-          valor: 1250.5,
-          dataVencimento: "2024-12-28",
-          status: "pendente",
-          cliente: "João Silva Santos",
-          recorrente: false,
-          centroCusto: "Loja Principal",
-          numeroDocumento: "VND-001",
-          formaPagamento: "Cartão de Crédito",
-          createdAt: "2024-12-26T10:00:00.000Z",
-          updatedAt: "2024-12-26T10:00:00.000Z",
-        },
-        {
-          id: 2,
-          descricao: "Fornecedor - Confecções Modernas",
-          tipo: "pagar",
-          categoria: "Fornecedores",
-          subcategoria: "Mercadorias",
-          valor: 2850.0,
-          dataVencimento: "2024-12-30",
-          status: "pendente",
-          fornecedor: "Confecções Modernas Ltda",
-          recorrente: false,
-          centroCusto: "Compras",
-          numeroDocumento: "NF-12345",
-          formaPagamento: "Boleto",
-          createdAt: "2024-12-20T14:30:00.000Z",
-          updatedAt: "2024-12-20T14:30:00.000Z",
-        },
-        {
-          id: 3,
-          descricao: "Aluguel - Janeiro 2025",
-          tipo: "pagar",
-          categoria: "Despesas Fixas",
-          subcategoria: "Aluguel",
-          valor: 3200.0,
-          dataVencimento: "2025-01-10",
-          status: "pendente",
-          fornecedor: "Imobiliária Central",
-          recorrente: true,
-          centroCusto: "Administrativo",
-          numeroDocumento: "ALG-2025-01",
-          formaPagamento: "Transferência",
-          createdAt: "2024-12-15T09:00:00.000Z",
-          updatedAt: "2024-12-15T09:00:00.000Z",
-        },
-        {
-          id: 4,
-          descricao: "Energia Elétrica - Dezembro",
-          tipo: "pagar",
-          categoria: "Despesas Fixas",
-          subcategoria: "Utilidades",
-          valor: 420.0,
-          dataVencimento: "2024-12-25",
-          dataPagamento: "2024-12-24",
-          status: "pago",
-          fornecedor: "Companhia Elétrica",
-          recorrente: true,
-          centroCusto: "Operacional",
-          numeroDocumento: "EE-12-2024",
-          formaPagamento: "Débito Automático",
-          valorPago: 420.0,
-          createdAt: "2024-12-01T08:00:00.000Z",
-          updatedAt: "2024-12-24T16:30:00.000Z",
-        },
-        {
-          id: 5,
-          descricao: "Venda - Cupom 002",
-          tipo: "receber",
-          categoria: "Vendas",
-          subcategoria: "Vendas Parceladas",
-          valor: 890.9,
-          dataVencimento: "2024-12-20",
-          status: "vencido",
-          cliente: "Maria Oliveira Costa",
-          recorrente: false,
-          centroCusto: "Loja Principal",
-          numeroDocumento: "VND-002",
-          formaPagamento: "Cartão de Crédito",
-          juros: 15.5,
-          createdAt: "2024-11-20T15:20:00.000Z",
-          updatedAt: "2024-12-20T23:59:00.000Z",
-        },
-        {
-          id: 6,
-          descricao: "Salários - Dezembro 2024",
-          tipo: "pagar",
-          categoria: "Folha de Pagamento",
-          subcategoria: "Salários",
-          valor: 8500.0,
-          dataVencimento: "2024-12-30",
-          status: "pendente",
-          recorrente: true,
-          centroCusto: "Recursos Humanos",
-          numeroDocumento: "FP-12-2024",
-          formaPagamento: "Transferência",
-          createdAt: "2024-12-01T10:00:00.000Z",
-          updatedAt: "2024-12-01T10:00:00.000Z",
-        },
-        {
-          id: 7,
-          descricao: "Impostos - Simples Nacional",
-          tipo: "pagar",
-          categoria: "Impostos",
-          subcategoria: "Simples Nacional",
-          valor: 1250.0,
-          dataVencimento: "2025-01-20",
-          status: "pendente",
-          recorrente: true,
-          centroCusto: "Fiscal",
-          numeroDocumento: "DAS-01-2025",
-          formaPagamento: "Débito Automático",
-          createdAt: "2024-12-01T12:00:00.000Z",
-          updatedAt: "2024-12-01T12:00:00.000Z",
-        },
-        {
-          id: 8,
-          descricao: "Venda - Cupom 003",
-          tipo: "receber",
-          categoria: "Vendas",
-          subcategoria: "Vendas à Vista",
-          valor: 329.8,
-          dataVencimento: "2024-12-26",
-          dataPagamento: "2024-12-26",
-          status: "pago",
-          cliente: "Carlos Eduardo Pereira",
-          recorrente: false,
-          centroCusto: "Loja Principal",
-          numeroDocumento: "VND-003",
-          formaPagamento: "PIX",
-          valorPago: 329.8,
-          createdAt: "2024-12-26T09:45:00.000Z",
-          updatedAt: "2024-12-26T09:45:00.000Z",
-        },
-      ]
+      const contasResponse = await fetch(`/api/financial/contas?${contasParams}`)
+      const contasData = await contasResponse.json()
 
-      const indicadoresMock: IndicadorFinanceiro[] = [
-        {
-          titulo: "Saldo Atual",
-          valor: "R$ 15.420,30",
-          variacao: 12.5,
-          tipo: "positivo",
-          icone: DollarSign,
-          cor: "green",
-          subtitulo: "Disponível em caixa",
-        },
-        {
-          titulo: "A Receber (30 dias)",
-          valor: "R$ 8.950,40",
-          variacao: 8.3,
-          tipo: "positivo",
-          icone: TrendingUp,
-          cor: "blue",
-          subtitulo: "Próximos 30 dias",
-        },
-        {
-          titulo: "A Pagar (30 dias)",
-          valor: "R$ 16.220,00",
-          variacao: -5.2,
-          tipo: "negativo",
-          icone: TrendingDown,
-          cor: "red",
-          subtitulo: "Próximos 30 dias",
-        },
-        {
-          titulo: "Índice de Liquidez",
-          valor: "1.85",
-          variacao: 15.8,
-          tipo: "positivo",
-          icone: Activity,
-          cor: "purple",
-          subtitulo: "Capacidade de pagamento",
-        },
-        {
-          titulo: "Ticket Médio",
-          valor: "R$ 156,80",
-          variacao: 3.2,
-          tipo: "positivo",
-          icone: Receipt,
-          cor: "orange",
-          subtitulo: "Por venda",
-        },
-        {
-          titulo: "Margem de Lucro",
-          valor: "32.5%",
-          variacao: 2.1,
-          tipo: "positivo",
-          icone: Percent,
-          cor: "teal",
-          subtitulo: "Margem bruta",
-        },
-      ]
+      // Carregar resumo e indicadores
+      const resumoResponse = await fetch("/api/financial/resumo?user_id=1")
+      const resumoData = await resumoResponse.json()
 
-      const metasMock: MetaFinanceira[] = [
-        {
-          id: "M001",
-          titulo: "Reduzir Despesas Fixas",
-          tipo: "economia",
-          valorMeta: 2000,
-          valorAtual: 1200,
-          prazo: "2025-03-31",
-          status: "em_andamento",
-        },
-        {
-          id: "M002",
-          titulo: "Aumentar Receita Mensal",
-          tipo: "receita",
-          valorMeta: 25000,
-          valorAtual: 28500,
-          prazo: "2024-12-31",
-          status: "atingida",
-        },
-        {
-          id: "M003",
-          titulo: "Controlar Gastos com Fornecedores",
-          tipo: "despesa",
-          valorMeta: 15000,
-          valorAtual: 18200,
-          prazo: "2025-01-31",
-          status: "atrasada",
-        },
-      ]
+      // Carregar categorias
+      const categoriasResponse = await fetch("/api/financial/categorias")
+      const categoriasData = await categoriasResponse.json()
 
-      const categoriasMock: CategoriaFinanceira[] = [
-        { id: "CAT001", nome: "Vendas", tipo: "receber", cor: "#10B981", orcamento: 30000, gasto: 28500 },
-        { id: "CAT002", nome: "Fornecedores", tipo: "pagar", cor: "#EF4444", orcamento: 15000, gasto: 18200 },
-        { id: "CAT003", nome: "Despesas Fixas", tipo: "pagar", cor: "#F59E0B", orcamento: 8000, gasto: 7620 },
-        { id: "CAT004", nome: "Folha de Pagamento", tipo: "pagar", cor: "#8B5CF6", orcamento: 10000, gasto: 8500 },
-        { id: "CAT005", nome: "Impostos", tipo: "pagar", cor: "#6B7280", orcamento: 3000, gasto: 2750 },
-      ]
+      // Carregar metas
+      const metasResponse = await fetch("/api/financial/metas?user_id=1")
+      const metasData = await metasResponse.json()
 
-      setContas(contasMock)
-      setIndicadores(indicadoresMock)
-      setMetas(metasMock)
-      setCategorias(categoriasMock)
+      if (contasData.success) setContas(contasData.contas)
+      if (resumoData.success) {
+        setResumo(resumoData.resumo)
+        setIndicadores(resumoData.indicadores)
+      }
+      if (categoriasData.success) setCategorias(categoriasData.categorias)
+      if (metasData.success) setMetas(metasData.metas)
     } catch (error) {
       console.error("Erro ao carregar dados financeiros:", error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const salvarNovaConta = async () => {
+    try {
+      const response = await fetch("/api/financial/contas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(novaConta),
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setContas([...contas, data.conta])
+        setShowNovaContaModal(false)
+        setNovaConta({ tipo: "pagar", categoria_id: undefined, recorrente: false, valor: 0 })
+        carregarDadosFinanceiros() // Recarregar para atualizar resumo
+      }
+    } catch (error) {
+      console.error("Erro ao salvar conta:", error)
+    }
+  }
+
+  const marcarComoPago = async (contaId: number) => {
+    try {
+      const response = await fetch(`/api/financial/contas/${contaId}/pagar`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setContas(contas.map((conta) => (conta.id === contaId ? data.conta : conta)))
+        carregarDadosFinanceiros() // Recarregar para atualizar resumo
+      }
+    } catch (error) {
+      console.error("Erro ao marcar como pago:", error)
+    }
+  }
+
+  const deletarConta = async (contaId: number) => {
+    if (!confirm("Tem certeza que deseja deletar esta conta?")) return
+
+    try {
+      const response = await fetch(`/api/financial/contas/${contaId}`, {
+        method: "DELETE",
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setContas(contas.filter((conta) => conta.id !== contaId))
+        carregarDadosFinanceiros() // Recarregar para atualizar resumo
+      }
+    } catch (error) {
+      console.error("Erro ao deletar conta:", error)
+    }
+  }
+
+  const salvarNovaMeta = async () => {
+    try {
+      const response = await fetch("/api/financial/metas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(novaMeta),
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setMetas([...metas, data.meta])
+        setShowMetaModal(false)
+        setNovaMeta({ tipo: "receita", valor_meta: 0, valor_atual: 0 })
+      }
+    } catch (error) {
+      console.error("Erro ao salvar meta:", error)
     }
   }
 
@@ -391,10 +210,6 @@ export default function FinanceiroControl() {
     }
   }
 
-  const getTipoColor = (tipo: string) => {
-    return tipo === "receber" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-  }
-
   const getVariacaoIcon = (tipo: string) => {
     if (tipo === "positivo") return <ArrowUpRight className="w-4 h-4 text-green-600" />
     if (tipo === "negativo") return <ArrowDownRight className="w-4 h-4 text-red-600" />
@@ -403,93 +218,34 @@ export default function FinanceiroControl() {
 
   const filteredContas = contas.filter((conta) => {
     const matchesSearch =
+      searchTerm === "" ||
       conta.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      conta.categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (conta.cliente && conta.cliente.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (conta.fornecedor && conta.fornecedor.toLowerCase().includes(searchTerm.toLowerCase()))
+      conta.categoria_nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (conta.cliente_nome && conta.cliente_nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (conta.fornecedor_nome && conta.fornecedor_nome.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    const matchesCategoria = filtros.categoria === "todas" || conta.categoria === filtros.categoria
-    const matchesStatus = filtros.status === "todos" || conta.status === filtros.status
-    const matchesTipo = filtros.tipo === "todos" || conta.tipo === filtros.tipo
-
-    return matchesSearch && matchesCategoria && matchesStatus && matchesTipo
+    return matchesSearch
   })
 
-  const totalReceber = contas
-    .filter((c) => c.tipo === "receber" && c.status !== "cancelado")
-    .reduce((acc, c) => acc + c.valor, 0)
-  const totalPagar = contas
-    .filter((c) => c.tipo === "pagar" && c.status !== "cancelado")
-    .reduce((acc, c) => acc + c.valor, 0)
-  const saldoLiquido = totalReceber - totalPagar
-  const contasVencidas = contas.filter((c) => c.status === "vencido").length
-  const contasVencendoHoje = contas.filter((c) => {
-    const hoje = new Date().toISOString().split("T")[0]
-    return c.dataVencimento === hoje && c.status === "pendente"
-  }).length
-
-  const salvarNovaConta = async () => {
-    try {
-      // Simular salvamento
-      const novaContaCompleta: ContaFinanceira = {
-        ...novaConta,
-        id: Date.now(),
-        status: "pendente",
-        recorrente: novaConta.recorrente || false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as ContaFinanceira
-
-      setContas([...contas, novaContaCompleta])
-      setShowNovaContaModal(false)
-      setNovaConta({ tipo: "pagar", categoria: "", recorrente: false })
-    } catch (error) {
-      console.error("Erro ao salvar conta:", error)
-    }
-  }
-
-  const marcarComoPago = async (contaId: number) => {
-    try {
-      setContas(
-        contas.map((conta) =>
-          conta.id === contaId
-            ? {
-                ...conta,
-                status: "pago" as const,
-                dataPagamento: new Date().toISOString().split("T")[0],
-                valorPago: conta.valor,
-                updatedAt: new Date().toISOString(),
-              }
-            : conta,
-        ),
-      )
-    } catch (error) {
-      console.error("Erro ao marcar como pago:", error)
-    }
-  }
-
   const exportarRelatorio = async (formato: "excel" | "pdf") => {
-    try {
-      // Simular exportação
-      alert(`Relatório ${formato.toUpperCase()} exportado com sucesso!`)
-    } catch (error) {
-      console.error("Erro ao exportar:", error)
-    }
+    alert(`Relatório ${formato.toUpperCase()} exportado com sucesso!`)
   }
 
-  // Dados para gráficos
+  // Dados para gráficos (usando dados reais quando disponível)
   const dadosFluxoCaixa = [
     { mes: "Set", entradas: 25000, saidas: 18000 },
     { mes: "Out", entradas: 28000, saidas: 19500 },
     { mes: "Nov", entradas: 32000, saidas: 21000 },
-    { mes: "Dez", entradas: 35000, saidas: 22500 },
+    { mes: "Dez", entradas: resumo?.total_recebido || 35000, saidas: resumo?.total_pago || 22500 },
   ]
 
-  const dadosCategorias = categorias.map((cat) => ({
-    label: cat.nome,
-    value: cat.gasto || 0,
-    color: cat.cor,
-  }))
+  const dadosCategorias = categorias
+    .filter((cat) => cat.tipo === "pagar")
+    .map((cat) => ({
+      label: cat.nome,
+      value: cat.orcamento || 0,
+      color: cat.cor,
+    }))
 
   if (isLoading) {
     return (
@@ -548,7 +304,6 @@ export default function FinanceiroControl() {
                   <SelectItem value="mes">Este Mês</SelectItem>
                   <SelectItem value="trimestre">Trimestre</SelectItem>
                   <SelectItem value="ano">Este Ano</SelectItem>
-                  <SelectItem value="personalizado">Personalizado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -560,11 +315,11 @@ export default function FinanceiroControl() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
-                  <SelectItem value="Vendas">Vendas</SelectItem>
-                  <SelectItem value="Fornecedores">Fornecedores</SelectItem>
-                  <SelectItem value="Despesas Fixas">Despesas Fixas</SelectItem>
-                  <SelectItem value="Folha de Pagamento">Folha de Pagamento</SelectItem>
-                  <SelectItem value="Impostos">Impostos</SelectItem>
+                  {categorias.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.nome}>
+                      {cat.nome}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -612,139 +367,133 @@ export default function FinanceiroControl() {
         {/* Dashboard Financeiro */}
         <TabsContent value="dashboard" className="space-y-6">
           {/* Indicadores Principais */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {indicadores.map((indicador, index) => {
-              const Icon = indicador.icone
-              return (
-                <Card key={index} className="relative overflow-hidden">
-                  <CardContent className="p-4 md:p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs md:text-sm font-medium text-gray-600">{indicador.titulo}</p>
-                        <p className="text-lg md:text-2xl font-bold truncate">{indicador.valor}</p>
-                        {indicador.subtitulo && <p className="text-xs text-gray-500 mt-1">{indicador.subtitulo}</p>}
-                        <div className="flex items-center gap-1 mt-2">
-                          {getVariacaoIcon(indicador.tipo)}
-                          <span
-                            className={`text-xs font-medium ${
-                              indicador.tipo === "positivo"
-                                ? "text-green-600"
-                                : indicador.tipo === "negativo"
-                                  ? "text-red-600"
-                                  : "text-gray-600"
-                            }`}
-                          >
-                            {indicador.variacao > 0 ? "+" : ""}
-                            {indicador.variacao}%
-                          </span>
-                        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {indicadores.map((indicador, index) => (
+              <Card key={index} className="relative overflow-hidden">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs md:text-sm font-medium text-gray-600">{indicador.titulo}</p>
+                      <p className="text-lg md:text-2xl font-bold truncate">{indicador.valor}</p>
+                      {indicador.subtitulo && <p className="text-xs text-gray-500 mt-1">{indicador.subtitulo}</p>}
+                      <div className="flex items-center gap-1 mt-2">
+                        {getVariacaoIcon(indicador.tipo)}
+                        <span
+                          className={`text-xs font-medium ${
+                            indicador.tipo === "positivo"
+                              ? "text-green-600"
+                              : indicador.tipo === "negativo"
+                                ? "text-red-600"
+                                : "text-gray-600"
+                          }`}
+                        >
+                          {indicador.variacao > 0 ? "+" : ""}
+                          {indicador.variacao}%
+                        </span>
                       </div>
-                      <Icon className={`h-6 w-6 md:h-8 md:w-8 text-${indicador.cor}-600 flex-shrink-0`} />
                     </div>
-                  </CardContent>
-                  <div className={`absolute bottom-0 left-0 h-1 w-full bg-${indicador.cor}-500`} />
-                </Card>
-              )
-            })}
+                    <DollarSign className="h-6 w-6 md:h-8 md:w-8 text-blue-600 flex-shrink-0" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
           {/* Alertas e Notificações */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-            <Card className="lg:col-span-2">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                  <Bell className="w-5 h-5 text-orange-600" />
-                  Alertas Financeiros
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {contasVencendoHoje > 0 && (
-                    <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
-                      <Clock className="w-5 h-5 text-yellow-600 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium text-yellow-800">{contasVencendoHoje} conta(s) vencendo hoje</p>
-                        <p className="text-sm text-yellow-600">Verifique as contas que precisam ser pagas hoje</p>
+          {resumo && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+              <Card className="lg:col-span-2">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                    <Bell className="w-5 h-5 text-orange-600" />
+                    Alertas Financeiros
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {resumo.contas_vencendo_hoje > 0 && (
+                      <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
+                        <Clock className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-yellow-800">
+                            {resumo.contas_vencendo_hoje} conta(s) vencendo hoje
+                          </p>
+                          <p className="text-sm text-yellow-600">Verifique as contas que precisam ser pagas hoje</p>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {contasVencidas > 0 && (
-                    <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg border-l-4 border-red-400">
-                      <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium text-red-800">{contasVencidas} conta(s) em atraso</p>
-                        <p className="text-sm text-red-600">Contas vencidas que precisam de atenção imediata</p>
+                    {resumo.contas_vencidas > 0 && (
+                      <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg border-l-4 border-red-400">
+                        <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-red-800">{resumo.contas_vencidas} conta(s) em atraso</p>
+                          <p className="text-sm text-red-600">Contas vencidas que precisam de atenção imediata</p>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {saldoLiquido < 0 && (
-                    <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg border-l-4 border-red-400">
-                      <TrendingDown className="w-5 h-5 text-red-600 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium text-red-800">Saldo negativo projetado</p>
-                        <p className="text-sm text-red-600">
-                          Déficit de{" "}
-                          {Math.abs(saldoLiquido).toLocaleString("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          })}
-                        </p>
+                    {resumo.saldo_liquido < 0 && (
+                      <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg border-l-4 border-red-400">
+                        <TrendingDown className="w-5 h-5 text-red-600 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-red-800">Saldo negativo projetado</p>
+                          <p className="text-sm text-red-600">
+                            Déficit de{" "}
+                            {Math.abs(resumo.saldo_liquido).toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            })}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {contasVencendoHoje === 0 && contasVencidas === 0 && saldoLiquido >= 0 && (
-                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
-                      <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium text-green-800">Situação financeira estável</p>
-                        <p className="text-sm text-green-600">Nenhum alerta crítico no momento</p>
+                    {resumo.contas_vencendo_hoje === 0 && resumo.contas_vencidas === 0 && resumo.saldo_liquido >= 0 && (
+                      <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
+                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-green-800">Situação financeira estável</p>
+                          <p className="text-sm text-green-600">Nenhum alerta crítico no momento</p>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                  <Target className="w-5 h-5 text-blue-600" />
-                  Resumo Rápido
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total Recebido</span>
-                    <span className="font-medium text-green-600">
-                      {contas
-                        .filter((c) => c.tipo === "receber" && c.status === "pago")
-                        .reduce((acc, c) => acc + (c.valorPago || c.valor), 0)
-                        .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    </span>
+                    )}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total Pago</span>
-                    <span className="font-medium text-red-600">
-                      {contas
-                        .filter((c) => c.tipo === "pagar" && c.status === "pago")
-                        .reduce((acc, c) => acc + (c.valorPago || c.valor), 0)
-                        .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    </span>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                    <Target className="w-5 h-5 text-blue-600" />
+                    Resumo Rápido
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Total Recebido</span>
+                      <span className="font-medium text-green-600">
+                        {resumo.total_recebido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Total Pago</span>
+                      <span className="font-medium text-red-600">
+                        {resumo.total_pago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t">
+                      <span className="text-sm font-medium">Saldo do Mês</span>
+                      <span className={`font-bold ${resumo.saldo_liquido >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {resumo.saldo_liquido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center pt-2 border-t">
-                    <span className="text-sm font-medium">Saldo do Mês</span>
-                    <span className={`font-bold ${saldoLiquido >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {saldoLiquido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Gráficos */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
@@ -772,7 +521,7 @@ export default function FinanceiroControl() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                   <PieChart className="w-5 h-5 text-purple-600" />
-                  Gastos por Categoria
+                  Orçamento por Categoria
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -824,23 +573,27 @@ export default function FinanceiroControl() {
                       type="number"
                       step="0.01"
                       value={novaConta.valor || ""}
-                      onChange={(e) => setNovaConta({ ...novaConta, valor: Number.parseFloat(e.target.value) })}
+                      onChange={(e) => setNovaConta({ ...novaConta, valor: Number.parseFloat(e.target.value) || 0 })}
                       placeholder="0,00"
                     />
                   </div>
                   <div>
                     <Label htmlFor="categoria">Categoria</Label>
                     <Select
-                      value={novaConta.categoria || ""}
-                      onValueChange={(value) => setNovaConta({ ...novaConta, categoria: value })}
+                      value={novaConta.categoria_id?.toString() || ""}
+                      onValueChange={(value) => setNovaConta({ ...novaConta, categoria_id: Number.parseInt(value) })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Vendas">Vendas</SelectItem>
-                        <SelectItem value="Serviços">Serviços</SelectItem>
-                        <SelectItem value="Outros">Outros</SelectItem>
+                        {categorias
+                          .filter((cat) => cat.tipo === "receber")
+                          .map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id.toString()}>
+                              {cat.nome}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -849,16 +602,16 @@ export default function FinanceiroControl() {
                     <Input
                       id="dataVencimento"
                       type="date"
-                      value={novaConta.dataVencimento || ""}
-                      onChange={(e) => setNovaConta({ ...novaConta, dataVencimento: e.target.value })}
+                      value={novaConta.data_vencimento || ""}
+                      onChange={(e) => setNovaConta({ ...novaConta, data_vencimento: e.target.value })}
                     />
                   </div>
                   <div>
                     <Label htmlFor="cliente">Cliente</Label>
                     <Input
                       id="cliente"
-                      value={novaConta.cliente || ""}
-                      onChange={(e) => setNovaConta({ ...novaConta, cliente: e.target.value })}
+                      value={novaConta.cliente_nome || ""}
+                      onChange={(e) => setNovaConta({ ...novaConta, cliente_nome: e.target.value })}
                       placeholder="Nome do cliente"
                     />
                   </div>
@@ -915,7 +668,7 @@ export default function FinanceiroControl() {
                           <td className="px-3 md:px-6 py-4">
                             <div className="min-w-0">
                               <p className="font-medium text-sm truncate">{conta.descricao}</p>
-                              <p className="text-xs text-gray-600 truncate">{conta.categoria}</p>
+                              <p className="text-xs text-gray-600 truncate">{conta.categoria_nome}</p>
                               {conta.recorrente && (
                                 <Badge variant="outline" className="text-xs mt-1">
                                   Recorrente
@@ -924,7 +677,7 @@ export default function FinanceiroControl() {
                             </div>
                           </td>
                           <td className="px-3 md:px-6 py-4 hidden sm:table-cell">
-                            <span className="text-sm truncate">{conta.cliente || "-"}</span>
+                            <span className="text-sm truncate">{conta.cliente_nome || "-"}</span>
                           </td>
                           <td className="px-3 md:px-6 py-4">
                             <div>
@@ -939,7 +692,7 @@ export default function FinanceiroControl() {
                             </div>
                           </td>
                           <td className="px-3 md:px-6 py-4 hidden md:table-cell text-sm">
-                            {new Date(conta.dataVencimento).toLocaleDateString("pt-BR")}
+                            {new Date(conta.data_vencimento).toLocaleDateString("pt-BR")}
                           </td>
                           <td className="px-3 md:px-6 py-4">
                             <Badge className={`${getStatusColor(conta.status)} text-xs`}>{conta.status}</Badge>
@@ -961,6 +714,14 @@ export default function FinanceiroControl() {
                               </Button>
                               <Button variant="ghost" size="sm">
                                 <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deletarConta(conta.id)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </td>
@@ -1027,7 +788,7 @@ export default function FinanceiroControl() {
                           <td className="px-3 md:px-6 py-4">
                             <div className="min-w-0">
                               <p className="font-medium text-sm truncate">{conta.descricao}</p>
-                              <p className="text-xs text-gray-600 truncate">{conta.categoria}</p>
+                              <p className="text-xs text-gray-600 truncate">{conta.categoria_nome}</p>
                               {conta.recorrente && (
                                 <Badge variant="outline" className="text-xs mt-1">
                                   Recorrente
@@ -1036,7 +797,7 @@ export default function FinanceiroControl() {
                             </div>
                           </td>
                           <td className="px-3 md:px-6 py-4 hidden sm:table-cell">
-                            <span className="text-sm truncate">{conta.fornecedor || "-"}</span>
+                            <span className="text-sm truncate">{conta.fornecedor_nome || "-"}</span>
                           </td>
                           <td className="px-3 md:px-6 py-4">
                             <div>
@@ -1051,7 +812,7 @@ export default function FinanceiroControl() {
                             </div>
                           </td>
                           <td className="px-3 md:px-6 py-4 hidden md:table-cell text-sm">
-                            {new Date(conta.dataVencimento).toLocaleDateString("pt-BR")}
+                            {new Date(conta.data_vencimento).toLocaleDateString("pt-BR")}
                           </td>
                           <td className="px-3 md:px-6 py-4">
                             <Badge className={`${getStatusColor(conta.status)} text-xs`}>{conta.status}</Badge>
@@ -1073,6 +834,14 @@ export default function FinanceiroControl() {
                               </Button>
                               <Button variant="ghost" size="sm">
                                 <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deletarConta(conta.id)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </td>
@@ -1098,7 +867,7 @@ export default function FinanceiroControl() {
               <CardContent>
                 <div className="text-center">
                   <p className="text-2xl md:text-3xl font-bold text-green-600">
-                    {totalReceber.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    {resumo?.total_receber.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) || "R$ 0,00"}
                   </p>
                   <p className="text-sm text-gray-600 mt-1">Próximos 30 dias</p>
                 </div>
@@ -1115,7 +884,7 @@ export default function FinanceiroControl() {
               <CardContent>
                 <div className="text-center">
                   <p className="text-2xl md:text-3xl font-bold text-red-600">
-                    {totalPagar.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    {resumo?.total_pagar.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) || "R$ 0,00"}
                   </p>
                   <p className="text-sm text-gray-600 mt-1">Próximos 30 dias</p>
                 </div>
@@ -1132,11 +901,13 @@ export default function FinanceiroControl() {
               <CardContent>
                 <div className="text-center">
                   <p
-                    className={`text-2xl md:text-3xl font-bold ${saldoLiquido >= 0 ? "text-blue-600" : "text-red-600"}`}
+                    className={`text-2xl md:text-3xl font-bold ${(resumo?.saldo_liquido || 0) >= 0 ? "text-blue-600" : "text-red-600"}`}
                   >
-                    {saldoLiquido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    {resumo?.saldo_liquido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) || "R$ 0,00"}
                   </p>
-                  <p className="text-sm text-gray-600 mt-1">{saldoLiquido >= 0 ? "Superávit" : "Déficit"} projetado</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {(resumo?.saldo_liquido || 0) >= 0 ? "Superávit" : "Déficit"} projetado
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -1225,11 +996,20 @@ export default function FinanceiroControl() {
                 <div className="space-y-4">
                   <div>
                     <Label>Título da Meta</Label>
-                    <Input placeholder="Ex: Reduzir despesas em 10%" />
+                    <Input
+                      placeholder="Ex: Reduzir despesas em 10%"
+                      value={novaMeta.titulo || ""}
+                      onChange={(e) => setNovaMeta({ ...novaMeta, titulo: e.target.value })}
+                    />
                   </div>
                   <div>
                     <Label>Tipo</Label>
-                    <Select>
+                    <Select
+                      value={novaMeta.tipo || "receita"}
+                      onValueChange={(value: "receita" | "despesa" | "economia") =>
+                        setNovaMeta({ ...novaMeta, tipo: value })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
@@ -1242,14 +1022,25 @@ export default function FinanceiroControl() {
                   </div>
                   <div>
                     <Label>Valor da Meta</Label>
-                    <Input type="number" placeholder="0,00" />
+                    <Input
+                      type="number"
+                      placeholder="0,00"
+                      value={novaMeta.valor_meta || ""}
+                      onChange={(e) => setNovaMeta({ ...novaMeta, valor_meta: Number.parseFloat(e.target.value) || 0 })}
+                    />
                   </div>
                   <div>
                     <Label>Prazo</Label>
-                    <Input type="date" />
+                    <Input
+                      type="date"
+                      value={novaMeta.prazo || ""}
+                      onChange={(e) => setNovaMeta({ ...novaMeta, prazo: e.target.value })}
+                    />
                   </div>
                   <div className="flex gap-2 pt-4">
-                    <Button className="flex-1">Criar Meta</Button>
+                    <Button onClick={salvarNovaMeta} className="flex-1">
+                      Criar Meta
+                    </Button>
                     <Button variant="outline" onClick={() => setShowMetaModal(false)} className="flex-1">
                       Cancelar
                     </Button>
@@ -1261,7 +1052,7 @@ export default function FinanceiroControl() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {metas.map((meta) => {
-              const progresso = (meta.valorAtual / meta.valorMeta) * 100
+              const progresso = (meta.valor_atual / meta.valor_meta) * 100
               const statusColor = meta.status === "atingida" ? "green" : meta.status === "em_andamento" ? "blue" : "red"
 
               return (
@@ -1292,10 +1083,10 @@ export default function FinanceiroControl() {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>
-                          Atual: {meta.valorAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          Atual: {meta.valor_atual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </span>
                         <span>
-                          Meta: {meta.valorMeta.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          Meta: {meta.valor_meta.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </span>
                       </div>
                       <div className="text-xs text-gray-600">
@@ -1412,48 +1203,42 @@ export default function FinanceiroControl() {
           </div>
 
           {/* Resumo dos Relatórios */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Activity className="w-5 h-5 text-blue-600" />
-                Resumo Executivo
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Total Recebido</p>
-                  <p className="text-xl font-bold text-green-600">
-                    {contas
-                      .filter((c) => c.tipo === "receber" && c.status === "pago")
-                      .reduce((acc, c) => acc + (c.valorPago || c.valor), 0)
-                      .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                  </p>
+          {resumo && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Activity className="w-5 h-5 text-blue-600" />
+                  Resumo Executivo
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <p className="text-sm text-gray-600">Total Recebido</p>
+                    <p className="text-xl font-bold text-green-600">
+                      {resumo.total_recebido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-red-50 rounded-lg">
+                    <p className="text-sm text-gray-600">Total Pago</p>
+                    <p className="text-xl font-bold text-red-600">
+                      {resumo.total_pago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                    <p className="text-sm text-gray-600">Contas Pendentes</p>
+                    <p className="text-xl font-bold text-yellow-600">{resumo.contas_pendentes}</p>
+                  </div>
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-gray-600">Saldo Atual</p>
+                    <p className={`text-xl font-bold ${resumo.saldo_liquido >= 0 ? "text-blue-600" : "text-red-600"}`}>
+                      {resumo.saldo_liquido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-center p-4 bg-red-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Total Pago</p>
-                  <p className="text-xl font-bold text-red-600">
-                    {contas
-                      .filter((c) => c.tipo === "pagar" && c.status === "pago")
-                      .reduce((acc, c) => acc + (c.valorPago || c.valor), 0)
-                      .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Contas Pendentes</p>
-                  <p className="text-xl font-bold text-yellow-600">
-                    {contas.filter((c) => c.status === "pendente").length}
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Saldo Atual</p>
-                  <p className={`text-xl font-bold ${saldoLiquido >= 0 ? "text-blue-600" : "text-red-600"}`}>
-                    {saldoLiquido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

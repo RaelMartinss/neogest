@@ -180,6 +180,7 @@ export default function PDV() {
   const [showPaymentSelection, setShowPaymentSelection] = useState(false);
   const [keyboardMode, setKeyboardMode] = useState(true);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+  // const []
 
   // Referências para inputs
   const barcodeInputRef = useRef<HTMLInputElement>(null);
@@ -663,9 +664,11 @@ export default function PDV() {
     try {
       setLoadingProducts(true);
       setProductsError(null);
-      console.log("🔄 Buscando produtos para PDV...");
 
-      const response = await fetch("/api/products/direct");
+      const searchCode = barcode.trim();
+      console.log("🔄 Buscando produtos para PDV...", searchCode);
+
+      const response = await fetch(`/api/products/barcode?code=${searchCode}`);
 
       if (!response.ok) {
         let msg = `Erro ${response.status}`;
@@ -675,7 +678,7 @@ export default function PDV() {
             ? (await response.json()).error ?? msg
             : await response.text();
         } catch {
-          /* ignore */
+          /* ignore 78939666314 */
         }
         throw new Error(msg);
       }

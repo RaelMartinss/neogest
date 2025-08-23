@@ -5,7 +5,10 @@ export const runtime = "nodejs";
 
 const sql = neon(process.env.DATABASE_URL!);
 
-export async function GET(req: NextRequest) {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+
+  console.log('Api barcode searchParams:', searchParams);
   try {
     console.log("🔄 API /api/products/direct - Buscando produtos para PDV...");
 
